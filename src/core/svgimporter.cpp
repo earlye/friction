@@ -1607,6 +1607,7 @@ void BoxSvgAttributes::apply(BoundingBox *box) const
 {
     if (!mLabel.isEmpty()) { box->prp_setName(mLabel); }
     else if (!mId.isEmpty()) { box->prp_setName(mId); }
+    if (!mId.isEmpty()) { box->setProperty("svgElementId", mId); }
 
     if (!mDescYaml.isEmpty()) box->setDescYaml(mDescYaml);
 
