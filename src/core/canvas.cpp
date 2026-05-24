@@ -28,6 +28,8 @@
 #include <limits>
 #include <QDebug>
 #include <QLoggingCategory>
+
+Q_LOGGING_CATEGORY(lcRenderOutput, "friction.renderoutput", QtWarningMsg)
 #include <QApplication>
 #include <QPolygonF>
 #include "Boxes/videobox.h"
@@ -843,6 +845,7 @@ void Canvas::anim_scaleTime(const int pivotAbsFrame, const qreal scale) {
 
 void Canvas::setOutputRendering(const bool bT) {
     mRenderingOutput = bT;
+    mSceneFramesHandler.setNoClear(bT);
 }
 
 void Canvas::setSceneFrame(const int relFrame) {
@@ -879,10 +882,16 @@ void Canvas::renderDataFinished(BoxRenderData *renderData) {
     mLastStateId = renderData->fBoxStateId;
 
     const auto range = prp_getIdenticalRelRange(relFrame);
+    qCDebug(lcRenderOutput) << "renderDataFinished: relFrame=" << relFrame
+             << "range=[" << range.fMin << "," << range.fMax << "]"
+             << "currentState=" << currentState;
     const auto cont = enve::make_shared<SceneFrameContainer>(
                 this, renderData, range,
                 currentState ? &mSceneFramesHandler : nullptr);
-    if(currentState) mSceneFramesHandler.add(cont);
+    if(currentState) {
+        mSceneFramesHandler.add(cont);
+        qCDebug(lcRenderOutput) << "renderDataFinished: added container to cache";
+    }
 
     if(!mPreviewing && !mRenderingOutput){
         bool newerSate = true;
@@ -906,6 +915,10 @@ void Canvas::renderDataFinished(BoxRenderData *renderData) {
 
 void Canvas::prp_afterChangedAbsRange(const FrameRange &range, const bool clip) {
     Property::prp_afterChangedAbsRange(range, clip);
+    if(mRenderingOutput) {
+        if(range.inRange(anim_getCurrentRelFrame())) mSceneFrameOutdated = true;
+        return;
+    }
     mSceneFramesHandler.remove(range);
     if(!mSceneFramesHandler.atFrame(anim_getCurrentRelFrame())) {
         mSceneFrameOutdated = true;
