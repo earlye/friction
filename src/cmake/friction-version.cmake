@@ -92,6 +92,24 @@ if(NOT GIT_BRANCH)
     set(GIT_BRANCH "unknown")
 endif()
 
+# When git reports detached HEAD (e.g. CI checkout), use GitHub-provided ref name.
+if(GIT_BRANCH STREQUAL "HEAD")
+    if(DEFINED ENV{GITHUB_HEAD_REF} AND NOT "$ENV{GITHUB_HEAD_REF}" STREQUAL "")
+        set(GIT_BRANCH "$ENV{GITHUB_HEAD_REF}")
+    elseif(DEFINED ENV{GITHUB_REF_NAME} AND NOT "$ENV{GITHUB_REF_NAME}" STREQUAL "")
+        set(GIT_BRANCH "$ENV{GITHUB_REF_NAME}")
+    endif()
+endif()
+
+# Fall back to environment variables for values not passed via -D flags.
+# This handles pre-built Docker images that invoke cmake without these flags.
+if(GHA_RUN_NUMBER STREQUAL "0" AND DEFINED ENV{GHA_RUN_NUMBER} AND NOT "$ENV{GHA_RUN_NUMBER}" STREQUAL "")
+    set(GHA_RUN_NUMBER "$ENV{GHA_RUN_NUMBER}")
+endif()
+if(BUILD_ORIGIN STREQUAL "local" AND DEFINED ENV{BUILD_ORIGIN} AND NOT "$ENV{BUILD_ORIGIN}" STREQUAL "")
+    set(BUILD_ORIGIN "$ENV{BUILD_ORIGIN}")
+endif()
+
 # Replace '/' in branch names (e.g. feature/foo) with '-' for metadata compatibility.
 string(REPLACE "/" "-" _branch_safe "${GIT_BRANCH}")
 
