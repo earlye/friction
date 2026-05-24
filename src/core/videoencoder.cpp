@@ -25,6 +25,8 @@
 
 #include "videoencoder.h"
 #include <QByteArray>
+#include <QDebug>
+#include <QLoggingCategory>
 #include "Boxes/boxrendercontainer.h"
 #include "CacheHandlers/sceneframecontainer.h"
 #include "canvas.h"
@@ -40,6 +42,8 @@
         RuntimeThrow(message); \
     } \
 }
+
+Q_LOGGING_CATEGORY(lcEncoder, "friction.encoder", QtWarningMsg)
 
 using namespace Friction::Core;
 
@@ -443,16 +447,16 @@ static void addAudioStream(OutputStream * const ost,
     }
 
 #ifdef QT_DEBUG
-    qDebug() << "name" << "src" << "output";
-    qDebug() << "channels" << inSound.channelCount() <<
+    qCDebug(lcEncoder) << "name" << "src" << "output";
+    qCDebug(lcEncoder) << "channels" << inSound.channelCount() <<
                               c->channels;
-    qDebug() << "channel layout" << inSound.fChannelLayout <<
+    qCDebug(lcEncoder) << "channel layout" << inSound.fChannelLayout <<
                                     c->channel_layout;
-    qDebug() << "sample rate" << inSound.fSampleRate <<
+    qCDebug(lcEncoder) << "sample rate" << inSound.fSampleRate <<
                                  c->sample_rate;
-    qDebug() << "sample format" << av_get_sample_fmt_name(inSound.fSampleFormat) <<
+    qCDebug(lcEncoder) << "sample format" << av_get_sample_fmt_name(inSound.fSampleFormat) <<
                                    av_get_sample_fmt_name(c->sample_fmt);
-    qDebug() << "bitrate" << settings.fAudioBitrate;
+    qCDebug(lcEncoder) << "bitrate" << settings.fAudioBitrate;
 #endif
 }
 

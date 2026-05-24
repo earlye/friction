@@ -27,6 +27,7 @@
 #include <cmath>
 #include <limits>
 #include <QDebug>
+#include <QLoggingCategory>
 #include <QApplication>
 #include <QPolygonF>
 #include "Boxes/videobox.h"
@@ -54,6 +55,8 @@
 #include "simpletask.h"
 #include "themesupport.h"
 #include "efiltersettings.h"
+
+Q_LOGGING_CATEGORY(lcCanvas, "friction.canvas", QtWarningMsg)
 
 using namespace Friction::Core;
 
@@ -1494,13 +1497,13 @@ void Canvas::addUndoRedo(const QString& name,
                          const stdfunc<void()>& undo,
                          const stdfunc<void()>& redo)
 {
-    qDebug() << "addUndoRedo" << name;
+    qCDebug(lcCanvas) << "addUndoRedo" << name;
     mUndoRedoStack->addUndoRedo(name, undo, redo);
 }
 
 void Canvas::pushUndoRedoName(const QString& name) const
 {
-    qDebug() << "pushUndoRedoName" << name;
+    qCDebug(lcCanvas) << "pushUndoRedoName" << name;
     mUndoRedoStack->pushName(name);
 }
 
