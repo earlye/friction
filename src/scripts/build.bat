@@ -52,8 +52,8 @@ cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=%BTYPE% -DCMAKE_PREFI
 set /p VERSION=<version.txt
 cmake --build . --config %BTYPE%
 
-set BUILD_OUTPUT="%CWD%\build\output"
-set OUTPUT_DIR="%BUILD_OUTPUT%\friction-%VERSION%"
+set BUILD_OUTPUT=%CWD%\build\output
+set OUTPUT_DIR=%BUILD_OUTPUT%\friction-%VERSION%
 
 mkdir "%OUTPUT_DIR%"
 mkdir "%OUTPUT_DIR%\audio"
