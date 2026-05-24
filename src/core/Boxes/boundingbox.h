@@ -519,6 +519,7 @@ private:
     QList<Property*> mCanvasProps;
 
     RenderContainer mDrawRenderContainer;
+
     SvgDescDocuments mDescYaml;
 };
 

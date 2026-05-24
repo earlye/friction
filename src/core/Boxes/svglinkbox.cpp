@@ -77,6 +77,25 @@ void SvgLinkBox::updateContent() {
     resolveElementTracks();
 }
 
+static void collectAnimationNodes(BoundingBox* box,
+                                   QList<BoundingBox*>& result) {
+    for (const auto& doc : box->getDescYaml()) {
+        if (!doc.isYaml) continue;
+        try {
+            const auto node = YAML::Load(doc.content.toStdString());
+            if (node["kind"] && node["kind"].as<std::string>() == "animation-node") {
+                result << box;
+                break;
+            }
+        } catch (...) {}
+    }
+    if (const auto container = enve_cast<ContainerBox*>(box)) {
+        for (const auto& child : container->getContainedBoxes()) {
+            collectAnimationNodes(child, result);
+        }
+    }
+}
+
 void SvgLinkBox::resolveElementTracks() {
     ContainerBox* svgRoot = nullptr;
     const auto& contained = getContainedBoxes();
@@ -90,10 +109,22 @@ void SvgLinkBox::resolveElementTracks() {
             track->syncToTarget(targetBox);
         }
     }
+    if (!svgRoot) return;
+    QList<BoundingBox*> animationNodes;
+    collectAnimationNodes(svgRoot, animationNodes);
+    for (BoundingBox* node : animationNodes) {
+        const QString name = node->prp_getName();
+        const bool exists = std::any_of(
+            mElementTracks.begin(), mElementTracks.end(),
+            [&name](const qsptr<SvgElementTrack>& t) {
+                return t->prp_getName() == name;
+            });
+        if (!exists) addElementTrack(name);
+    }
     for (const auto& track : mFlipbookTracks) {
         track->setPageMap({});
     }
-    if (svgRoot) collectFlipbookDescs(svgRoot);
+    collectFlipbookDescs(svgRoot);
     for (const auto& track : mFlipbookTracks) {
         track->resolveTargets(svgRoot);
         track->syncToTargets();
@@ -180,9 +211,14 @@ void SvgLinkBox::removeFlipbookTrack(SvgFlipbookTrack* track) {
 
 void SvgLinkBox::anim_setAbsFrame(const int frame) {
     SvgLinkBoxBase::anim_setAbsFrame(frame);
+    qCDebug(lcSvgElementTrack) << "anim_setAbsFrame" << frame
+                               << "tracks:" << mElementTracks.count();
     for (const auto& track : mElementTracks) {
         track->anim_setAbsFrame(frame);
-        if (auto* target = track->resolvedTarget()) {
+        auto* target = track->resolvedTarget();
+        qCDebug(lcSvgElementTrack) << "  track:" << track->prp_getName()
+                                   << "resolvedTarget:" << (target ? target->prp_getName() : "(null)");
+        if (target) {
             track->syncToTarget(target);
         }
     }

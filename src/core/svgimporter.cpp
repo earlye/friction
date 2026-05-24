@@ -167,6 +167,7 @@ public:
     const FillSvgAttributes &getFillAttributes() const;
     const StrokeSvgAttributes &getStrokeAttributes() const;
     const TextSvgAttributes &getTextAttributes() const;
+    const SvgDescDocuments &getDescYaml() const;
 
     void loadBoundingBoxAttributes(const QDomElement &element);
 
@@ -175,7 +176,6 @@ public:
     void apply(BoundingBox *box) const;
     void setFillAttribute(const QString &value);
     void setStrokeAttribute(const QString &value);
-    const SvgDescDocuments& getDescYaml() const { return mDescYaml; }
 protected:
     SkPathFillType mFillRule = SkPathFillType::kEvenOdd;
 
@@ -1240,6 +1240,28 @@ const TextSvgAttributes &BoxSvgAttributes::getTextAttributes() const {
     return mTextAttributes;
 }
 
+const SvgDescDocuments &BoxSvgAttributes::getDescYaml() const {
+    return mDescYaml;
+}
+
+static SvgDescDocuments parseDescDocuments(const QString &descText) {
+    SvgDescDocuments result;
+    const QStringList segments = descText.split(
+        QRegularExpression("^---\\s*$", QRegularExpression::MultilineOption),
+        Qt::KeepEmptyParts
+    );
+    static const QRegularExpression yamlLineRx(
+        "^\\s*[a-zA-Z_][\\w-]*\\s*:|^\\s*-\\s+",
+        QRegularExpression::MultilineOption
+    );
+    for (const QString &segment : segments) {
+        const QString trimmed = segment.trimmed();
+        if (trimmed.isEmpty()) continue;
+        result.append({yamlLineRx.match(trimmed).hasMatch(), trimmed});
+    }
+    return result;
+}
+
 void BoxSvgAttributes::setFillAttribute(const QString &value) {
     if(value.contains("none")) {
         mFillAttributes.setPaintType(NOPAINT);
@@ -1264,22 +1286,6 @@ void BoxSvgAttributes::setStrokeAttribute(const QString &value) {
 QString stripPx(const QString& val) {
     QString res = val;
     return res.remove("px").remove("pt").remove("em").trimmed();
-}
-
-static SvgDescDocuments parseDescDocuments(const QString& descText) {
-    SvgDescDocuments result;
-    const QStringList segments = descText.split(
-        QRegularExpression("^---\\s*$", QRegularExpression::MultilineOption),
-        Qt::KeepEmptyParts);
-    static const QRegularExpression yamlLineRx(
-        "^\\s*[a-zA-Z_][\\w-]*\\s*:|^\\s*-\\s+",
-        QRegularExpression::MultilineOption);
-    for (const QString& segment : segments) {
-        const QString trimmed = segment.trimmed();
-        if (trimmed.isEmpty()) continue;
-        result.append({yamlLineRx.match(trimmed).hasMatch(), trimmed});
-    }
-    return result;
 }
 
 void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
@@ -1449,6 +1455,15 @@ void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
     mId = element.attribute("id", mId);
     mLabel = element.attribute("inkscape:label", mLabel);
 
+    const QDomNodeList children = element.childNodes();
+    for (int i = 0; i < children.count(); i++) {
+        const QDomNode child = children.at(i);
+        if (child.isElement() && child.toElement().tagName() == "desc") {
+            mDescYaml = parseDescDocuments(child.toElement().text());
+            break;
+        }
+    }
+
     const QString fillAttributesStr = element.attribute("fill");
     if(!fillAttributesStr.isEmpty()) setFillAttribute(fillAttributesStr);
 
@@ -1484,15 +1499,6 @@ void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
     }
 
     mDecomposedTrans = MatrixDecomposition::decompose(mRelTransform);
-
-    const QDomNodeList children = element.childNodes();
-    for (int i = 0; i < children.count(); i++) {
-        const QDomNode child = children.at(i);
-        if (child.isElement() && child.toElement().tagName() == "desc") {
-            mDescYaml = parseDescDocuments(child.toElement().text());
-            break;
-        }
-    }
 }
 
 bool BoxSvgAttributes::hasTransform() const {
@@ -1606,6 +1612,8 @@ void BoxSvgAttributes::apply(BoundingBox *box) const
     else if (!mId.isEmpty()) { box->prp_setName(mId); }
     if (!mId.isEmpty()) { box->setProperty("svgElementId", mId); }
 
+    if (!mDescYaml.isEmpty()) box->setDescYaml(mDescYaml);
+
     if (const auto path = enve_cast<PathBox*>(box)) {
         const qreal m11 = mRelTransform.m11();
         const qreal m12 = mRelTransform.m12();
@@ -1626,7 +1634,6 @@ void BoxSvgAttributes::apply(BoundingBox *box) const
     transAnim->setScale(mDecomposedTrans.fScaleX, mDecomposedTrans.fScaleY);
     transAnim->setRotation(mDecomposedTrans.fRotation);
     transAnim->setShear(mDecomposedTrans.fShearX, mDecomposedTrans.fShearY);
-    if (!mDescYaml.isEmpty()) box->setDescYaml(mDescYaml);
 }
 
 void VectorPathSvgAttributes::apply(SmartVectorPath * const path) {
