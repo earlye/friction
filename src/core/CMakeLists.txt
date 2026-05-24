@@ -141,6 +141,7 @@ set(
     Boxes/renderdatahandler.cpp
     Boxes/smartvectorpath.cpp
     Boxes/svgelementtrack.cpp
+    Boxes/svgflipbooktrack.cpp
     Boxes/svglinkbox.cpp
     Boxes/textbox.cpp
     Boxes/textboxrenderdata.cpp
@@ -454,6 +455,7 @@ set(
     Boxes/renderdatahandler.h
     Boxes/smartvectorpath.h
     Boxes/svgelementtrack.h
+    Boxes/svgflipbooktrack.h
     Boxes/svglinkbox.h
     Boxes/textbox.h
     Boxes/textboxrenderdata.h
@@ -652,6 +654,7 @@ set(
     Animators/animator.h
     Animators/intanimator.h
     Animators/boolanimator.h
+    svgdesc.h
     svgexporter.h
     svgexporthelpers.h
     svgimporter.h
@@ -769,6 +772,7 @@ target_link_libraries(
     #${QUAZIP_LIBRARIES}
     ${FFMPEG_LIBRARIES}
     ${SKIA_LIBRARIES}
+    yaml-cpp::yaml-cpp
 )
 
 if(APPLE)
