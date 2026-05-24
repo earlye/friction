@@ -19,22 +19,83 @@
 # See 'README.md' for more information.
 #
 
-set(PROJECT_VERSION_MAJOR 1)
-set(PROJECT_VERSION_MINOR 0)
-set(PROJECT_VERSION_PATCH 0)
-set(PROJECT_VERSION_TWEAK 0)
+# Core version is read from semver.yaml at the project root.
+file(READ "${CMAKE_CURRENT_LIST_DIR}/../../semver.yaml" _semver_content)
+string(REGEX MATCH "major:[ \t]*([0-9]+)" _ "${_semver_content}")
+set(PROJECT_VERSION_MAJOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "minor:[ \t]*([0-9]+)" _ "${_semver_content}")
+set(PROJECT_VERSION_MINOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "patch:[ \t]*([0-9]+)" _ "${_semver_content}")
+set(PROJECT_VERSION_PATCH ${CMAKE_MATCH_1})
+set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
-if (PROJECT_VERSION_TWEAK GREATER 0)
-    set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.${PROJECT_VERSION_TWEAK})
-else()
-    set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
+# Build metadata inputs — override via cmake -D flags or let them auto-detect.
+set(GIT_COMMIT "" CACHE STRING "Git commit SHA (short, 8 chars)")
+set(GIT_COMMIT_COUNT "" CACHE STRING "Git commit count (total commits reachable from HEAD)")
+set(GIT_BRANCH "" CACHE STRING "Git branch name")
+set(GHA_RUN_NUMBER "0" CACHE STRING "GitHub Actions run number")
+set(BUILD_ORIGIN "local" CACHE STRING "Build origin: 'local' or 'ci'")
+
+set(_dirty_flag "")
+
+find_package(Git QUIET)
+if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../.git")
+    if(NOT GIT_COMMIT)
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} rev-parse --short=8 HEAD
+            WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/../.."
+            OUTPUT_VARIABLE _git_sha
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        set(GIT_COMMIT "${_git_sha}" CACHE STRING "Git commit SHA (short, 8 chars)" FORCE)
+    endif()
+    if(NOT GIT_COMMIT_COUNT)
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD
+            WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/../.."
+            OUTPUT_VARIABLE _git_count
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        set(GIT_COMMIT_COUNT "${_git_count}" CACHE STRING "Git commit count" FORCE)
+    endif()
+    if(NOT GIT_BRANCH)
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
+            WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/../.."
+            OUTPUT_VARIABLE _git_branch
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        set(GIT_BRANCH "${_git_branch}" CACHE STRING "Git branch name" FORCE)
+    endif()
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} status --porcelain
+        WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/../.."
+        OUTPUT_VARIABLE _git_dirty_output
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(_git_dirty_output)
+        set(_dirty_flag "[dirty]")
+    endif()
 endif()
 
-set(CUSTOM_BUILD "" CACHE STRING "Custom build")
-if (NOT CUSTOM_BUILD STREQUAL "")
-    add_definitions(-DCUSTOM_BUILD="${CUSTOM_BUILD}")
+if(NOT GIT_COMMIT_COUNT)
+    set(GIT_COMMIT_COUNT "0")
 endif()
-option(FRICTION_OFFICIAL_RELEASE "" OFF)
-if (${FRICTION_OFFICIAL_RELEASE})
-    add_definitions(-DPROJECT_OFFICIAL)
+if(NOT GIT_COMMIT)
+    set(GIT_COMMIT "unknown")
 endif()
+if(NOT GIT_BRANCH)
+    set(GIT_BRANCH "unknown")
+endif()
+
+# Replace '/' in branch names (e.g. feature/foo) with '-' for metadata compatibility.
+string(REPLACE "/" "-" _branch_safe "${GIT_BRANCH}")
+
+set(PROJECT_BUILD_METADATA "${GIT_COMMIT_COUNT}.${GHA_RUN_NUMBER}.${GIT_COMMIT}.${_branch_safe}${_dirty_flag}.${BUILD_ORIGIN}")
+set(PROJECT_VERSION_FULL "${PROJECT_VERSION}+${PROJECT_BUILD_METADATA}")
+
+message("-- friction version: ${PROJECT_VERSION_FULL}")
