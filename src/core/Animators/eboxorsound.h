@@ -27,7 +27,8 @@
 #define EBOXORSOUND_H
 
 #include <QLoggingCategory>
-Q_DECLARE_LOGGING_CATEGORY(lcLocked)
+#include "../core_global.h"
+CORE_EXPORT const QLoggingCategory &lcLocked();
 
 #include "staticcomplexanimator.h"
 

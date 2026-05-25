@@ -28,7 +28,10 @@
 #include <QLoggingCategory>
 #include "canvas.h"
 
-Q_LOGGING_CATEGORY(lcLocked, "friction.locked", QtWarningMsg)
+CORE_EXPORT const QLoggingCategory &lcLocked() {
+    static const QLoggingCategory category("friction.locked", QtWarningMsg);
+    return category;
+}
 #include "Timeline/durationrectangle.h"
 #include "Properties/emimedata.h"
 #include "Sound/esound.h"
