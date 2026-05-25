@@ -55,25 +55,14 @@ run:
 run-debug:
     build-debug-arm64/dmg/Friction.app/Contents/MacOS/friction
 
-run-debug-render:
-    QT_LOGGING_RULES="friction.renderoutput=true;friction.canvas=true;friction.videoencoder=true;friction.core=true" just run-debug > log.txt 2>&1;
-
-run-debug-preview:
-    QT_LOGGING_RULES="friction.renderhandler=true;friction.cachehandler=true;friction.canvas=true;friction.renderoutput=true;friction.audio=true" just run-debug > log.txt 2>&1;
-
-run-debug-timeline:
-    QT_LOGGING_RULES="SvgElementTrack=true;friction.svgflipbooktrack=true" just run-debug > log.txt 2>&1;
-
-run-debug-camera:
-    QT_LOGGING_RULES="friction.camera=true;friction.renderoutput=true;friction.renderhandler=true" just run-debug > log.txt 2>&1;
-
-# Debug pivot track attachment decisions (read-path filtering + collectPivotDescs + applyPivotToTrack)
-debug-pivot-track-attachment:
-    QT_LOGGING_RULES="SvgElementTrack=true;friction.svgpivot=true" just run-debug > log.txt 2>&1;
-
-# Full pivot debug: SVG import detection + collectPivotDescs traversal + bbox pivot resets
-run-debug-pivot:
-    QT_LOGGING_RULES="friction.svg.import=true;friction.svgpivot=true;friction.box.pivot=true" just run-debug > log.txt 2>&1;
+# Run with logging config from .claude/logs.local.json, output to log.txt
+# Usage: just run-debug-with-logs camera-box
+run-debug-with-logs config:
+    #!/usr/bin/env bash
+    set -e
+    rules=$(python3 -c "import json; d=json.load(open('.claude/logs.local.json')); print(d.get('{{config}}', ''))")
+    if [ -z "$rules" ]; then echo "Unknown config '{{config}}'. Keys: $(python3 -c \"import json; print(', '.join(json.load(open('.claude/logs.local.json')).keys()))\")"; exit 1; fi
+    QT_LOGGING_RULES="$rules" build-debug-arm64/dmg/Friction.app/Contents/MacOS/friction > log.txt 2>&1
 
 # Produce the universal DMG from the two arch builds
 package: build

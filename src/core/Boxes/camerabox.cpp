@@ -38,11 +38,8 @@ CameraBox::CameraBox() : BoundingBox("Camera", eBoxType::camera) {
     });
 }
 
-bool CameraBox::relPointInsidePath(const QPointF &relPos) const {
-    const auto canvas = getParentScene();
-    if (!canvas) return false;
-    const auto size = canvas->getCanvasSize();
-    return QRectF(0, 0, size.width(), size.height()).contains(relPos);
+bool CameraBox::relPointInsidePath(const QPointF &) const {
+    return false;
 }
 
 void CameraBox::queTasks() {
@@ -60,6 +57,32 @@ QRectF CameraBox::getWorldBoundsAtFrame(const qreal relFrame) const {
     const auto size = canvas->getCanvasSize();
     const QRectF localRect(0, 0, size.width(), size.height());
     return getRelativeTransformAtFrame(relFrame).mapRect(localRect);
+}
+
+bool CameraBox::isActiveViewCamera() const
+{
+    const auto scene = getParentScene();
+    if (!scene || !scene->isActiveCameraBox(this)) return false;
+    return scene->hasCameraViewTransform();
+}
+
+void CameraBox::drawBoundingRect(SkCanvas* const canvas, const float invScale)
+{
+    if (isActiveViewCamera()) return;
+    BoundingBox::drawBoundingRect(canvas, invScale);
+}
+
+void CameraBox::drawHoveredSk(SkCanvas* const canvas, const float invScale)
+{
+    if (isActiveViewCamera()) return;
+    BoundingBox::drawHoveredSk(canvas, invScale);
+}
+
+void CameraBox::drawAllCanvasControls(SkCanvas* const canvas, const CanvasMode mode,
+                                      const float invScale, const bool ctrlPressed)
+{
+    if (isActiveViewCamera()) return;
+    BoundingBox::drawAllCanvasControls(canvas, mode, invScale, ctrlPressed);
 }
 
 void CameraBox::drawCameraBox(SkCanvas* const canvas, const float invScale, const bool cameraIsView) {
