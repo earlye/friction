@@ -1,13 +1,11 @@
 name: macOS
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
+  workflow_call:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.event_name == 'pull_request' && format('macOS-{0}', github.event.pull_request.number) || format('macOS-{0}', github.run_id) }}
   cancel-in-progress: true
 
 jobs:

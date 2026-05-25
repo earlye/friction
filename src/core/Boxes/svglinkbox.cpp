@@ -28,13 +28,18 @@
 #include "fileshandler.h"
 #include "svgimporter.h"
 #include "Animators/gradient.h"
+#include "Animators/transformanimator.h"
+#include "Animators/qpointfanimator.h"
 #include "ReadWrite/evformat.h"
 #include "swt_abstraction.h"
 #include "typemenu.h"
 #include "XML/xevexporter.h"
 
 #include <QInputDialog>
+#include <QLoggingCategory>
 #include <yaml-cpp/yaml.h>
+
+Q_LOGGING_CATEGORY(lcSvgPivot, "friction.svgpivot", QtWarningMsg)
 
 SvgFileCacheHandler* svgFileHandlerGetter(const QString& path) {
     return FilesHandler::sInstance->getFileHandler<SvgFileCacheHandler>(path);
@@ -125,6 +130,7 @@ void SvgLinkBox::resolveElementTracks() {
         track->setPageMap({});
     }
     collectFlipbookDescs(svgRoot);
+    collectPivotDescs(svgRoot);
     for (const auto& track : mFlipbookTracks) {
         track->resolveTargets(svgRoot);
         track->syncToTargets();
@@ -161,6 +167,60 @@ void SvgLinkBox::collectFlipbookDescs(ContainerBox* container) {
         }
         if (const auto sub = enve_cast<ContainerBox*>(box))
             collectFlipbookDescs(sub);
+    }
+}
+
+void SvgLinkBox::collectPivotDescs(ContainerBox* container) {
+    for (auto* box : container->getContainedBoxes()) {
+        qCDebug(lcSvgPivot) << "collectPivotDescs: visiting box"
+                            << box->prp_getName()
+                            << "svgElementId=" << box->property("svgElementId").toString()
+                            << "mCenterPivotPlanned=" << box->isCenterPivotPlanned()
+                            << "hasSvgPivotPos=" << box->property("svgPivotPos").isValid();
+        const QVariant pivotVar = box->property("svgPivotPos");
+        if (pivotVar.isValid()) {
+            const QPointF pivot = pivotVar.toPointF();
+            const QString boxName = box->prp_getName();
+            const QString svgId = box->property("svgElementId").toString();
+            qCDebug(lcSvgPivot) << "collectPivotDescs: found pivot" << pivot
+                                << "on box" << boxName << "svgId=" << svgId;
+            bool found = false;
+            for (const auto& track : mElementTracks) {
+                const QString tName = track->prp_getName();
+                if (tName == boxName || (!svgId.isEmpty() && tName == svgId)) {
+                    found = true;
+                    auto* target = track->resolvedTarget();
+                    if (!target) {
+                        qCDebug(lcSvgPivot) << "collectPivotDescs: track" << tName
+                                            << "has no resolved target";
+                        break;
+                    }
+                    auto* transformAdv = enve_cast<AdvancedTransformAnimator*>(
+                        target->getTransformAnimator());
+                    if (!transformAdv) {
+                        qCDebug(lcSvgPivot) << "collectPivotDescs: no AdvancedTransformAnimator on"
+                                            << tName;
+                        break;
+                    }
+                    qCDebug(lcSvgPivot) << "collectPivotDescs: target=" << target->prp_getName()
+                                        << "mCenterPivotPlanned=" << target->isCenterPivotPlanned()
+                                        << "pivot before=" << transformAdv->getPivotAnimator()->getEffectiveValue();
+                    target->cancelPlannedCenterPivot();
+                    transformAdv->getPivotAnimator()->setBaseValue(pivot);
+                    qCDebug(lcSvgPivot) << "collectPivotDescs: set pivot on" << tName
+                                        << "=" << pivot
+                                        << "pivot after=" << transformAdv->getPivotAnimator()->getEffectiveValue()
+                                        << "mCenterPivotPlanned after cancel=" << target->isCenterPivotPlanned();
+                    break;
+                }
+            }
+            if (!found) {
+                qCDebug(lcSvgPivot) << "collectPivotDescs: no element track found for"
+                                    << boxName << "(svgId=" << svgId << ")";
+            }
+        }
+        if (const auto sub = enve_cast<ContainerBox*>(box))
+            collectPivotDescs(sub);
     }
 }
 
