@@ -146,8 +146,10 @@ start-worktree name:
     claude -w {{name}} --dangerously-skip-permissions "! just index && just build-debug"
 
 # Build ctags index for symbol lookup (requires universal-ctags)
+# Build ctags index for symbol lookup (requires universal-ctags) and codegraph
 index:
     $(brew --prefix universal-ctags)/bin/ctags -R src/
+    codegraph init -i
 
 # Remove build output directories
 clean:
