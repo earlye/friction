@@ -297,7 +297,7 @@ void Canvas::renderSk(SkCanvas* const canvas,
 
     canvas->concat(skViewTrans);
     if (isPreviewingOrRendering()) {
-        if (mSceneFrame) {
+        if (mSceneFrame && mSceneFrame->storesDataInMemory() && mSceneFrame->hasImage()) {
             qCDebug(lcCanvas) << "draw: previewing/rendering, frame has data="
                      << mSceneFrame->storesDataInMemory()
                      << "inUse=" << mSceneFrame->inUse()
@@ -313,7 +313,14 @@ void Canvas::renderSk(SkCanvas* const canvas,
             mSceneFrame->drawImage(canvas, filter);
             canvas->restore();
         } else {
-            qCDebug(lcCanvas) << "draw: previewing/rendering but mSceneFrame is NULL";
+            canvas->clear(SK_ColorBLACK);
+            if (mSceneFrame) {
+                qCDebug(lcCanvas) << "draw: previewing/rendering, frame not drawable:"
+                         << "storesDataInMemory=" << mSceneFrame->storesDataInMemory()
+                         << "hasImage=" << mSceneFrame->hasImage();
+            } else {
+                qCDebug(lcCanvas) << "draw: previewing/rendering but mSceneFrame is NULL";
+            }
         }
         return;
     }
@@ -870,11 +877,13 @@ QSize Canvas::getCanvasSize() {
 void Canvas::setPreviewing(const bool bT) {
     qCDebug(lcCanvas) << "setPreviewing:" << bT;
     mPreviewing = bT;
+    if (!bT && !mRenderingOutput) mSceneFramesHandler.setNoClear(false);
 }
 
 void Canvas::setRenderingPreview(const bool bT) {
     qCDebug(lcCanvas) << "setRenderingPreview:" << bT;
     mRenderingPreview = bT;
+    if (bT) mSceneFramesHandler.setNoClear(true);
 }
 
 void Canvas::anim_scaleTime(const int pivotAbsFrame, const qreal scale) {
@@ -892,15 +901,19 @@ void Canvas::setOutputRendering(const bool bT) {
 }
 
 void Canvas::setSceneFrame(const int relFrame) {
-    const auto cont = mSceneFramesHandler.atFrame(relFrame);
-    if (cont) {
-        qCDebug(lcCanvas) << "setSceneFrame(int): relFrame=" << relFrame
-                 << "inMemory=" << cont->storesDataInMemory()
-                 << "inUse=" << cont->inUse();
-    } else {
+    const auto cont = mSceneFramesHandler.atFrame<SceneFrameContainer>(relFrame);
+    if (!cont) {
         qCDebug(lcCanvas) << "setSceneFrame(int): relFrame=" << relFrame << "CACHE MISS";
+        return;
     }
-    setSceneFrame(enve::shared<SceneFrameContainer>(cont));
+    qCDebug(lcCanvas) << "setSceneFrame(int): relFrame=" << relFrame
+             << "inMemory=" << cont->storesDataInMemory()
+             << "inUse=" << cont->inUse();
+    if (cont->storesDataInMemory()) {
+        setSceneFrame(cont->ref<SceneFrameContainer>());
+    } else {
+        setLoadingSceneFrame(cont->ref<SceneFrameContainer>());
+    }
 }
 
 void Canvas::setSceneFrame(const stdsptr<SceneFrameContainer>& cont) {
