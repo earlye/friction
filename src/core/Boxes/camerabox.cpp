@@ -62,13 +62,27 @@ QRectF CameraBox::getWorldBoundsAtFrame(const qreal relFrame) const {
 bool CameraBox::isActiveViewCamera() const
 {
     const auto scene = getParentScene();
-    if (!scene || !scene->isActiveCameraBox(this)) return false;
-    return scene->hasCameraViewTransform();
+    const bool isActive = scene && scene->isActiveCameraBox(this);
+    const bool hasViewXform = isActive && scene->hasCameraViewTransform();
+    const QRectF worldBounds = scene ? getWorldBoundsAtFrame(scene->anim_getCurrentRelFrame()) : QRectF{};
+    const QMatrix totalXform = getTotalTransform();
+    qCDebug(lcCamera) << "isActiveViewCamera:" << prp_getName()
+                      << "isActive=" << isActive
+                      << "hasViewXform=" << hasViewXform
+                      << "worldBounds=" << worldBounds
+                      << "totalXform=["
+                      << totalXform.m11() << totalXform.m12()
+                      << totalXform.m21() << totalXform.m22()
+                      << "dx=" << totalXform.dx() << "dy=" << totalXform.dy() << "]";
+    if (!isActive) return false;
+    return hasViewXform;
 }
 
 void CameraBox::drawBoundingRect(SkCanvas* const canvas, const float invScale)
 {
-    if (isActiveViewCamera()) return;
+    const bool suppress = isActiveViewCamera();
+    qCDebug(lcCamera) << "drawBoundingRect:" << prp_getName() << "suppress=" << suppress;
+    if (suppress) return;
     BoundingBox::drawBoundingRect(canvas, invScale);
 }
 
