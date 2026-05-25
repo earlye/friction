@@ -23,6 +23,10 @@ set -e -x
 source /opt/rh/llvm-toolset-7.0/enable
 clang -v
 
+export PATH="/mnt/ccache-bin:${PATH}"
+export CCACHE_DIR=/mnt/ccache
+export CCACHE_MAXSIZE=5G
+
 SDK=${SDK:-"/opt/friction"}
 BUILD=${BUILD:-"${HOME}"}
 
@@ -93,6 +97,8 @@ cmake -G Ninja \
 -DQSCINTILLA_LIBRARIES=qscintilla2_friction_qt5 \
 -DCMAKE_CXX_COMPILER=clang++ \
 -DCMAKE_C_COMPILER=clang \
+-DCMAKE_C_COMPILER_LAUNCHER=ccache \
+-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
 -DGHA_RUN_NUMBER=${GHA_RUN_NUMBER} \
 -DBUILD_ORIGIN=${BUILD_ORIGIN} \
 -DSKIA_STATIC=ON \

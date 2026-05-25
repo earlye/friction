@@ -50,6 +50,27 @@ jobs:
       run: |
         docker pull frictiongraphics/friction-vfxplatform-sdk
         docker save frictiongraphics/friction-vfxplatform-sdk -o /tmp/friction-vfxplatform-sdk.tar
+    - name: Cache ccache binary
+      uses: actions/cache@v4
+      with:
+        path: distfiles/ccache-bin
+        key: ccache-static-4.10.2-linux-x86_64
+    - name: Cache compiler cache
+      uses: actions/cache@v4
+      with:
+        path: distfiles/ccache
+        key: friction-linux-ccache-${{ github.ref_name }}-${{ github.sha }}
+        restore-keys: |
+          friction-linux-ccache-${{ github.ref_name }}-
+          friction-linux-ccache-
+    - name: Setup ccache
+      run: |
+        mkdir -p distfiles/ccache-bin distfiles/ccache
+        if [ ! -f distfiles/ccache-bin/ccache ]; then
+          curl -L https://github.com/ccache/ccache/releases/download/v4.10.2/ccache-4.10.2-linux-x86_64.tar.xz \
+            | tar xJ --strip-components=1 -C distfiles/ccache-bin ccache-4.10.2-linux-x86_64/ccache
+        fi
+        chmod +x distfiles/ccache-bin/ccache
     - name: Build
       run: ./src/scripts/build.sh
     - name: Artifact
