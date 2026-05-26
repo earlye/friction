@@ -219,6 +219,11 @@ Code worktree sessions.
 - [#50](https://github.com/earlye/friction/pull/50): `just
   start-worktree` — named tmux window for Claude Code worktree sessions
 
+## Known Issues
+
+Playback on windows appears to drop the frame cache, resulting in
+audio with a black display. Currently being worked in
+[#52](https://github.com/earlye/friction/pull/52)
 
 ## Bug Fixes
 
