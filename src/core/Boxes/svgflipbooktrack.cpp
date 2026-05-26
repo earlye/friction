@@ -34,7 +34,10 @@
 #include <QPainter>
 #include <QtMath>
 
-Q_LOGGING_CATEGORY(lcSvgFlipbookTrack, "friction.svgflipbooktrack", QtWarningMsg)
+CORE_EXPORT const QLoggingCategory &lcSvgFlipbookTrack() {
+    static const QLoggingCategory category("friction.svgflipbooktrack", QtWarningMsg);
+    return category;
+}
 
 static BoundingBox* findDescendantByName(ContainerBox* container,
                                           const QString& name) {

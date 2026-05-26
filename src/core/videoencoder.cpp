@@ -26,7 +26,10 @@
 #include "videoencoder.h"
 #include <QLoggingCategory>
 
-Q_LOGGING_CATEGORY(lcVideoEncoder, "friction.videoencoder", QtWarningMsg)
+CORE_EXPORT const QLoggingCategory &lcVideoEncoder() {
+    static const QLoggingCategory category("friction.videoencoder", QtWarningMsg);
+    return category;
+}
 #include <QByteArray>
 #include <QDebug>
 #include "Boxes/boxrendercontainer.h"

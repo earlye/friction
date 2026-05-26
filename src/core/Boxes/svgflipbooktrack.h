@@ -28,7 +28,7 @@
 #include <QLoggingCategory>
 #include <QMap>
 
-Q_DECLARE_LOGGING_CATEGORY(lcSvgFlipbookTrack)
+CORE_EXPORT const QLoggingCategory &lcSvgFlipbookTrack();
 
 class ContainerBox;
 class BoundingBox;

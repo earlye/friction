@@ -31,7 +31,7 @@
 #include <QLoggingCategory>
 #include <QString>
 
-Q_DECLARE_LOGGING_CATEGORY(lcVideoEncoder)
+CORE_EXPORT const QLoggingCategory &lcVideoEncoder();
 #include <QList>
 #include "skia/skiaincludes.h"
 #include "Tasks/updatable.h"

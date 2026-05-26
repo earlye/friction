@@ -35,7 +35,7 @@
 #include <QLoggingCategory>
 #include <stdexcept>
 
-Q_DECLARE_LOGGING_CATEGORY(lcCacheHandler)
+CORE_EXPORT const QLoggingCategory &lcCacheHandler();
 
 class CORE_EXPORT HddCachableCacheHandler {
     friend class UsedRange;
