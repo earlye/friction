@@ -8,18 +8,22 @@ This document tracks changes landed in [earlye/friction](https://github.com/earl
 
 A new animation targeting system that reads YAML annotations from SVG
 `<desc>` elements and automatically creates animation tracks bound to
-SVG elements by `id` or `inkscape-label`.
+SVG elements by `id` or `inkscape:label`.
 
-This is probably the biggest feature here. The intent is to change
-friction from "everything in this file" to "this file is the puppeteer
-controlling a bunch of other SVGs. If you improve those SVGs, just
-re-render here."
+This is the biggest feature here, and the one that motivated this
+fork. The intent is to change friction from "everything in this file"
+to "this file is the puppeteer controlling a bunch of other SVGs. If
+you improve those SVGs, just re-render here."
 
 The mechanism that allows this is a new annotation system that you can
 inject into SVG documents. It features YAML in SVG `<desc>`
 elements. Each embedded YAML document represents a discriminated union
-of the form `{ "kind" : "kind-identifier" , ...other-attributes... }`
-where the "other-attributes" are dependent on the `kind`.
+of the form below, where "other-attributes" are dependent on the `kind`.
+
+```yaml
+kind: "kind-identifier"
+# ... other-attributes here
+```
 
 Here are the `kind`s introduced so far:
 
@@ -32,8 +36,8 @@ Here are the `kind`s introduced so far:
   SvgElementTrack explicitly leaves out a `pivot` track - use the
   `pivot` `<desc>` annotation instead.
 
-  example syntax:
-  ```
+  Example Syntax:
+  ```yaml
   kind: animation-node
   ```
 
@@ -41,6 +45,7 @@ Here are the `kind`s introduced so far:
   friction. The `map` yaml attribute tells friction which other
   elements to display/hide when the flipbook index changes in
   friction.
+
   ![inkscape screenshot](earlye-fork/example-flipbook.jpg)
 
   Additional attributes:
@@ -48,8 +53,8 @@ Here are the `kind`s introduced so far:
     - `map` maps index to locator-for-page. locator is svg id
       attribute, with fallback to svg inkscape:label attribute.
 
-  example syntax:
-  ```
+  Example Syntax:
+  ```yaml
   kind: flipbook
   map:
     0: "mouth:closed"
@@ -58,11 +63,13 @@ Here are the `kind`s introduced so far:
 
 
 - `pivot` Tells friction that the enclosing `<circle>`'s center is the
-  rotation point for the enclosing `<circle>`'s first ancestor with
-  `kind: animation-node`  Example:
+  rotation point for the nearest ancestor annotated with `kind:
+  animation-node`
+
   ![inkscape screenshot](earlye-fork/example-pivot.jpg)
 
-  ```
+  Example Syntax:
+  ```svg
   <g id='a'>
     <desc>kind: animation-node</desc>
     <circle cx="32" cy="45"><desc>kind: pivot</desc></circle>
@@ -72,8 +79,8 @@ Here are the `kind`s introduced so far:
 
   In this example, `32,45` become the pivot coordinates for group `a`.
 
-  example syntax:
-  ```
+  Example Syntax:
+  ```yaml
   kind: pivot
   ```
 
@@ -103,10 +110,12 @@ Here are the `kind`s introduced so far:
 
 Added an "add camera" button, and implemented support for having a
 camera as a first class entity that can be translated within the
-scene.  If there is a camera, it is wrapped by a Cameras flipbook, so
+scene. If there is a camera, it is wrapped by a Cameras flipbook, so
 that specific cameras can be selected, and switched by an animation
 track. (No transition effects for now - just hard cuts). Pressing 'C'
 toggles between "look through camera" and "look at world."
+
+![friction screenshot](earlye-fork/example-cameras.jpg)
 
 Introduced in [#29](https://github.com/earlye/friction/pull/29), which
 added `CameraBox`, the `cameraCreate` canvas mode, and
@@ -214,10 +223,10 @@ before the fork.
 
 | # | Fix | Origin |
 |---|-----|--------|
-| [#31](https://github.com/earlye/friction/pull/31) | Fix camera box drawn at wrong position when camera is active viewport | fork-introduced — same |
-| [#38](https://github.com/earlye/friction/pull/38) | Fix C-toggle clip state ignored when camera is active | fork-introduced — camera mode was added by this fork |
-| [#41](https://github.com/earlye/friction/pull/41) | Fix active camera box hover/selection in canvas viewport | fork-introduced — same |
-| [#46](https://github.com/earlye/friction/pull/46) | Fix double camera transform on SvgElementTrack elements after timeline scrub | fork-introduced — SvgElementTrack + camera interaction is entirely fork code |
+| [#31](https://github.com/earlye/friction/pull/31) | Fix camera box drawn at wrong position when camera is active viewport | fork-introduced - this is a fork feature |
+| [#38](https://github.com/earlye/friction/pull/38) | Fix C-toggle clip state ignored when camera is active | fork-introduced |
+| [#41](https://github.com/earlye/friction/pull/41) | Fix active camera box hover/selection in canvas viewport | fork-introduced |
+| [#46](https://github.com/earlye/friction/pull/46) | Fix double camera transform on SvgElementTrack elements after timeline scrub | fork-introduced |
 
 ### SvgElementTrack / Flipbook
 
