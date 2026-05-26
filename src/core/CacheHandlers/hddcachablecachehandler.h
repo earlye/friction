@@ -117,8 +117,7 @@ public:
     }
 
     void clearUseRange() {
-        qCDebug(lcCacheHandler) << "HddCachableCacheHandler::clearUseRang()";
-        if(mNoClear) throw std::runtime_error("HddCachableCacheHandler::clearUseRange called with mNoClear=true");
+        qCDebug(lcCacheHandler) << "HddCachableCacheHandler::clearUseRange() mNoClear=" << mNoClear;
         mUsedRange.clearRange();
     }
 
