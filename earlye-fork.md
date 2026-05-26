@@ -4,20 +4,53 @@ This document tracks changes landed in [earlye/friction](https://github.com/earl
 
 ## New Features
 
-### macOS Build Support
-
-**Add Justfile for macOS Homebrew-based builds** — `just build-debug`
-  and `just build-mac-arm` recipes for macOS development without
-  manual CMake invocations. Includes `build-debug` and `run-debug`
-  targets.
-
-- [#2](https://github.com/earlye/friction/pull/2), [#7](https://github.com/earlye/friction/pull/7)
-
 ### SVG-Driven Animation System (SvgElementTrack)
 
 A new animation targeting system that reads YAML annotations from SVG
 `<desc>` elements and automatically creates animation tracks bound to
-SVG elements by ID.
+SVG elements by `id` or `inkscape-label`.
+
+This is probably the biggest feature here. The intent is to change
+friction from "everything in this file" to "this file is the puppeteer
+controlling a bunch of other SVGs. If you improve those SVGs, just
+re-render here."
+
+The mechanism that allows this is a new annotation system that you can
+inject into SVG documents. It features YAML in SVG `<desc>`
+elements. Each embedded YAML document represents a discriminated union
+of the form `{ "kind" : "kind-identifier" , ...other-attributes... }`
+where the "other-attributes" are dependent on the `kind`.
+
+Here are the `kind`s introduced so far:
+
+- `animation-node` There are no additional attributes yet
+  (inverse-kinematics is being contemplated). This tells friction to
+  include an SvgElementTrack in the timeline that controls the
+  enclosing svg element.
+
+- `flipbook` Sets up the enclosed svg element as a flipbook in
+  friction. The `map` yaml attribute tells friction which other
+  elements to display/hide when the flipbook index changes in
+  friction.
+
+  Additional attributes:
+
+    - `map` maps index to locator-for-page. locator is svg id
+      attribute, with fallback to svg inkscape:label attribute.
+
+- `pivot` Tells friction that the enclosing `<circle>`'s center is the
+  rotation point for the enclosing `<circle>`'s first ancestor with
+  `kind: animation-node`  Example:
+
+  ```
+  <g id='a'>
+    <desc>kind: animation-node</desc>
+    <circle cx="32" cy="45"><desc>kind: pivot</desc></circle>
+    ...other-stuff...
+  </g>
+  ```
+
+  In this example, `32,45` become the pivot coordinates for group `a`.
 
 - **Per-element animation targeting for SvgLinkBox** — each linked SVG
     element can have independent animation
@@ -90,6 +123,12 @@ added `CameraBox`, the `cameraCreate` canvas mode, and
 - **Parallel macOS CI** — arm64 and x86_64 builds run as separate
     parallel jobs. [#33](https://github.com/earlye/friction/pull/33)
 
+### Audio Waveform in Animation Timeline
+
+- **Audio waveform visualization** — the timeline now renders the
+    decoded audio waveform behind clip regions, giving visual tempo
+    cues for keyframe
+    placement. [#56](https://github.com/earlye/friction/pull/56)
 
 ### Developer Tooling
 
@@ -108,13 +147,14 @@ added `CameraBox`, the `cameraCreate` canvas mode, and
     Claude Code worktree
     session. [#50](https://github.com/earlye/friction/pull/50)
 
+- **Add Justfile for macOS Homebrew-based builds** — `just
+  build-debug` and `just build-mac-arm` recipes for macOS development
+  without manual CMake invocations. Includes `build-debug` and
+  `run-debug` targets.
 
-### Audio Waveform in Animation Timeline
+  [#2](https://github.com/earlye/friction/pull/2)
+  [#7](https://github.com/earlye/friction/pull/7)
 
-- **Audio waveform visualization** — the timeline now renders the
-    decoded audio waveform behind clip regions, giving visual tempo
-    cues for keyframe
-    placement. [#56](https://github.com/earlye/friction/pull/56)
 
 ## Bug Fixes
 
