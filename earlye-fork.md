@@ -84,27 +84,19 @@ Here are the `kind`s introduced so far:
   kind: pivot
   ```
 
-- **Per-element animation targeting for SvgLinkBox** — each linked SVG
-    element can have independent animation
-    properties. [#4](https://github.com/earlye/friction/pull/4)
+#### History
 
-- **Animation track support** — adds `SvgElementTrack`, a new track
-    type that binds keyframe animation to SVG
-    elements. [#8](https://github.com/earlye/friction/pull/8),
-    [#9](https://github.com/earlye/friction/pull/9)
-
-- **`<desc>` YAML auto-creates SvgElementTracks** — place
-    `animation-node` markers in SVG `<desc>` tags to auto-generate
-    tracks on
-    import. [#13](https://github.com/earlye/friction/pull/13)
-
-- **Flipbook track support for SvgLinkBox** — `<desc>` YAML can
-    declare a flipbook track that steps through SVG
-    pages. [#14](https://github.com/earlye/friction/pull/14)
-
-- **`kind:pivot` SVG desc tag** — declares a pivot point element;
-    SvgElementTracks are trimmed to transform-only for pivot
-    elements. [#23](https://github.com/earlye/friction/pull/23)
+- [#4](https://github.com/earlye/friction/pull/4): per-element
+  animation targeting for SvgLinkBox
+- [#8](https://github.com/earlye/friction/pull/8),
+  [#9](https://github.com/earlye/friction/pull/9): SvgElementTrack
+  (animation track support)
+- [#13](https://github.com/earlye/friction/pull/13): `<desc>` YAML
+  auto-creates SvgElementTracks on import
+- [#14](https://github.com/earlye/friction/pull/14): flipbook track
+  support for SvgLinkBox
+- [#23](https://github.com/earlye/friction/pull/23): `kind:pivot` SVG
+  desc tag
 
 ### Camera as a first class entity
 
@@ -117,77 +109,115 @@ toggles between "look through camera" and "look at world."
 
 ![friction screenshot](earlye-fork/example-cameras.jpg)
 
-Introduced in [#29](https://github.com/earlye/friction/pull/29), which
-added `CameraBox`, the `cameraCreate` canvas mode, and
-`getActiveCameraRect` with multi-camera flipbook selection.
+#### History
+
+- [#29](https://github.com/earlye/friction/pull/29): `CameraBox`,
+  `cameraCreate` canvas mode, and multi-camera flipbook selection
 
 ### Lock Entity UX
 
-- **Flash lock icon on blocked modification** — when the user attempts
-    to modify a locked entity, the lock icon flashes to indicate why
-    the operation
-    failed. [#35](https://github.com/earlye/friction/pull/35)
+Upstream friction has a lock feature to protect elements from
+accidental edits, but enforcement was inconsistent — children of a
+locked parent could still be modified by dragging sliders or typing
+values directly, and timeline keyframe operations ignored lock state
+entirely. This fork hardens locking so it is fully enforced:
+
+- Dragging a slider or typing a value directly on any child of a
+  locked entity is blocked
+- Keyframe deletion and timeline moves respect the lock state of the
+  affected object
+- When any modification is blocked by a lock, the lock icon flashes to
+  give immediate visual feedback explaining why the operation was
+  rejected
+
+#### History
+
+- [#35](https://github.com/earlye/friction/pull/35): flash lock icon
+  on blocked modification
+- [#36](https://github.com/earlye/friction/pull/36),
+  [#37](https://github.com/earlye/friction/pull/37): block slider drag
+  and manual typing on children of locked entities
+- [#47](https://github.com/earlye/friction/pull/47): keyframe deletion
+  and movement respect lock state
 
 ### Keyboard Shortcuts
 
-- **Remap Add Keyframe → `K`; Split Clip → `Shift+K`** across all
-    platforms. [#39](https://github.com/earlye/friction/pull/39)
+Remapped frame-level editing operations to match common animation tool
+conventions.
+
+#### History
+
+- [#39](https://github.com/earlye/friction/pull/39): Add Keyframe →
+  `K`; Split Clip → `Shift+K` across all platforms
 
 ### Categorized Debug Logging
 
-- **Replace `qDebug()` with `qCDebug` categories** throughout the
-    codebase, enabling per-subsystem log
-    filtering. [#16](https://github.com/earlye/friction/pull/16)
+Replaced `qDebug()` throughout the codebase with categorized
+`qCDebug` logging, enabling per-subsystem filtering via
+`QT_LOGGING_RULES`. Previously, debug output was either all-on or
+all-off.
+
+#### History
+
+- [#16](https://github.com/earlye/friction/pull/16): replace
+  `qDebug()` with `qCDebug` categories throughout codebase
 
 ### SemVer 2.0 Build Versioning
 
-- **Structured build metadata** using SemVer 2.0 (`X.Y.Z+build.N`),
-    replacing the prior ad hoc version
-    strings. [#21](https://github.com/earlye/friction/pull/21)
+Switched to SemVer 2.0 build metadata (`X.Y.Z+build.N`) to give every
+CI artifact a unique, sortable version string.
+
+#### History
+
+- [#21](https://github.com/earlye/friction/pull/21): structured build
+  metadata using SemVer 2.0
 
 ### CI / Release Automation
 
-- **macOS CI: SDK caching, concurrency, named artifacts.**
-    [#1](https://github.com/earlye/friction/pull/1)
+Added macOS and Linux CI workflows and a release pipeline that builds
+all platform artifacts and publishes a GitHub release automatically on
+every merge to `main`.
 
-- **Release workflow** — on each merge to `main`, builds all platform
-    artifacts and creates a GitHub release
-    automatically. [#22](https://github.com/earlye/friction/pull/22)
+#### History
 
-- **Parallel macOS CI** — arm64 and x86_64 builds run as separate
-    parallel jobs. [#33](https://github.com/earlye/friction/pull/33)
+- [#1](https://github.com/earlye/friction/pull/1): macOS CI — SDK
+  caching, concurrency, named artifacts
+- [#22](https://github.com/earlye/friction/pull/22): release workflow
+  — builds all platforms and creates a GitHub release on merge
+- [#33](https://github.com/earlye/friction/pull/33): parallel macOS CI
+  — arm64 and x86_64 as separate jobs
 
 ### Audio Waveform in Animation Timeline
 
-- **Audio waveform visualization** — the timeline now renders the
-    decoded audio waveform behind clip regions, giving visual tempo
-    cues for keyframe
-    placement. [#56](https://github.com/earlye/friction/pull/56)
+The timeline now renders the decoded audio waveform behind clip
+regions, giving visual tempo cues for keyframe placement.
+
+#### History
+
+- [#56](https://github.com/earlye/friction/pull/56): audio waveform
+  visualization in animation timeline
 
 ### Developer Tooling
 
-- **`just run-debug-with-logs`** — config-driven debug sessions with
-    log category filtering via
-    `.claude/logs.local.json`. [#40](https://github.com/earlye/friction/pull/40)
+A `Justfile` was added to make macOS builds and debug sessions usable
+without manual CMake invocations (`just build-debug`, `just
+build-mac-arm`), along with tooling for symbol indexing and Claude
+Code worktree sessions.
 
-- **`just index`** — ctags-based symbol index for IDE/AI
-    navigation. [#44](https://github.com/earlye/friction/pull/44)
+#### History
 
-- **`just index` includes CodeGraph** — runs `codegraph init` as part
-    of the index
-    build. [#49](https://github.com/earlye/friction/pull/49)
-
-- **`just start-worktree`** — launches a named tmux window for a
-    Claude Code worktree
-    session. [#50](https://github.com/earlye/friction/pull/50)
-
-- **Add Justfile for macOS Homebrew-based builds** — `just
-  build-debug` and `just build-mac-arm` recipes for macOS development
-  without manual CMake invocations. Includes `build-debug` and
-  `run-debug` targets.
-
-  [#2](https://github.com/earlye/friction/pull/2)
-  [#7](https://github.com/earlye/friction/pull/7)
+- [#2](https://github.com/earlye/friction/pull/2),
+  [#7](https://github.com/earlye/friction/pull/7): Justfile with
+  `just build-debug` and `just build-mac-arm` recipes
+- [#40](https://github.com/earlye/friction/pull/40): `just
+  run-debug-with-logs` — config-driven debug sessions with log category
+  filtering
+- [#44](https://github.com/earlye/friction/pull/44): `just index` —
+  ctags symbol index for IDE/AI navigation
+- [#49](https://github.com/earlye/friction/pull/49): `just index`
+  includes CodeGraph init
+- [#50](https://github.com/earlye/friction/pull/50): `just
+  start-worktree` — named tmux window for Claude Code worktree sessions
 
 
 ## Bug Fixes
