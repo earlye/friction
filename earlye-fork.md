@@ -27,20 +27,40 @@ Here are the `kind`s introduced so far:
   (inverse-kinematics is being contemplated). This tells friction to
   include an SvgElementTrack in the timeline that controls the
   enclosing svg element.
+  ![inkscape screenshot](earlye-fork/example-animation-node.jpg)
+
+  SvgElementTrack explicitly leaves out a `pivot` track - use the
+  `pivot` `<desc>` annotation instead.
+
+  example syntax:
+  ```
+  kind: animation-node
+  ```
 
 - `flipbook` Sets up the enclosed svg element as a flipbook in
   friction. The `map` yaml attribute tells friction which other
   elements to display/hide when the flipbook index changes in
   friction.
+  ![inkscape screenshot](earlye-fork/example-flipbook.jpg)
 
   Additional attributes:
 
     - `map` maps index to locator-for-page. locator is svg id
       attribute, with fallback to svg inkscape:label attribute.
 
+  example syntax:
+  ```
+  kind: flipbook
+  map:
+    0: "mouth:closed"
+    1: "mouth:opened"
+  ```
+
+
 - `pivot` Tells friction that the enclosing `<circle>`'s center is the
   rotation point for the enclosing `<circle>`'s first ancestor with
   `kind: animation-node`  Example:
+  ![inkscape screenshot](earlye-fork/example-pivot.jpg)
 
   ```
   <g id='a'>
@@ -51,6 +71,11 @@ Here are the `kind`s introduced so far:
   ```
 
   In this example, `32,45` become the pivot coordinates for group `a`.
+
+  example syntax:
+  ```
+  kind: pivot
+  ```
 
 - **Per-element animation targeting for SvgLinkBox** — each linked SVG
     element can have independent animation
