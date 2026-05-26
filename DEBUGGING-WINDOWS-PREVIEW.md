@@ -2,9 +2,9 @@
 
 If you're experiencing blank preview playback on Windows — frames appear to cache correctly in the timeline but the screen goes black when playback starts (while audio continues) — follow these steps to capture a debug log.
 
-## Step 1: Download the debug build
+## Step 1: Install a release build
 
-Download the `friction-*-debug-setup-win64.exe` installer from the CI artifacts on the relevant PR or branch. Install it like the normal release.
+Download and install the standard release build — the `friction-*-setup-win64.exe` installer from the CI artifacts or release page. Debug logging is enabled at runtime via an environment variable; no special debug build is required.
 
 ## Step 2: Capture a log
 

@@ -30,27 +30,3 @@ jobs:
           build\output\friction-*.7z
           build\output\friction-*.exe
 
-  debug:
-    runs-on: windows-2022
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Cache SDK
-      uses: actions/cache@v4
-      with:
-        path: sdk
-        key: friction-sdk-1.0.0r6-windows
-    - name: Build Debug
-      shell: cmd
-      env:
-        GHA_RUN_NUMBER: ${{ github.run_number }}
-        BUILD_ORIGIN: ci
-      run: .\src\scripts\build.bat debug
-    - name: Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: friction-ci-windows-x64-debug-${{ github.sha }}
-        path: |
-          build\output\friction-*-debug-windows-x64.7z
-          build\output\friction-*-debug-setup-win64.exe

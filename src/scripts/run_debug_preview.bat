@@ -1,6 +1,6 @@
 @echo off
 
-REM ### Run Friction debug build with preview logging enabled
+REM ### Run Friction with preview logging enabled (works with release builds)
 REM # Captures output to friction-debug.log in the same directory
 REM #
 REM # Usage:
