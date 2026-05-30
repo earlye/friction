@@ -34,7 +34,7 @@
 #include <QDebug>
 #include <QLoggingCategory>
 
-Q_DECLARE_LOGGING_CATEGORY(lcFrictionCore)
+CORE_EXPORT const QLoggingCategory &lcFrictionCore();
 
 #define ERROUT(msg) qCDebug(lcFrictionCore) << msg << __LINE__
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)

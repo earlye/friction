@@ -35,7 +35,7 @@
 #include <QLoggingCategory>
 #include <stdexcept>
 
-Q_DECLARE_LOGGING_CATEGORY(lcCacheHandler)
+CORE_EXPORT const QLoggingCategory &lcCacheHandler();
 
 class CORE_EXPORT HddCachableCacheHandler {
     friend class UsedRange;
@@ -117,8 +117,7 @@ public:
     }
 
     void clearUseRange() {
-        qCDebug(lcCacheHandler) << "HddCachableCacheHandler::clearUseRang()";
-        if(mNoClear) throw std::runtime_error("HddCachableCacheHandler::clearUseRange called with mNoClear=true");
+        qCDebug(lcCacheHandler) << "HddCachableCacheHandler::clearUseRange() mNoClear=" << mNoClear;
         mUsedRange.clearRange();
     }
 

@@ -8,6 +8,7 @@ set OPT=%1
 set BTYPE=Release
 set BDIR=release
 set BUILD_ORIGIN=local
+set BUILD_SUFFIX=
 
 if "%OPT%" == "ci" (
     set BUILD_ORIGIN=ci
@@ -15,6 +16,7 @@ if "%OPT%" == "ci" (
 if "%OPT%" == "debug" (
     set BTYPE=Debug
     set BDIR=debug
+    set BUILD_SUFFIX=-debug
 )
 
 if "%GHA_RUN_NUMBER%"=="" set GHA_RUN_NUMBER=0
@@ -90,7 +92,7 @@ echo "Delete this file if you want to disable portable mode" > "%OUTPUT_DIR%\por
 
 cd "%BUILD_OUTPUT%"
 
-7z a -mx5 friction-%VERSION%-windows-x64.7z friction-%VERSION%
+7z a -mx5 friction-%VERSION%%BUILD_SUFFIX%-windows-x64.7z friction-%VERSION%
 
 copy "%CWD%\build\src\app\%BDIR%\friction.iss" "%OUTPUT_DIR%\"
 copy "%CWD%\src\app\icons\friction.ico" "%OUTPUT_DIR%\"
@@ -100,4 +102,4 @@ copy "%CWD%\LICENSE.md" "%OUTPUT_DIR%\"
 cd "%OUTPUT_DIR%"
 
 iscc friction.iss
-copy "setup\friction.exe" "%BUILD_OUTPUT%\friction-%VERSION%-setup-win64.exe"
+copy "setup\friction.exe" "%BUILD_OUTPUT%\friction-%VERSION%%BUILD_SUFFIX%-setup-win64.exe"

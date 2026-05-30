@@ -41,7 +41,10 @@
 #include <QInputDialog>
 #include <QBuffer>
 
-Q_LOGGING_CATEGORY(lcSvgElementTrack, "SvgElementTrack", QtWarningMsg)
+CORE_EXPORT const QLoggingCategory &lcSvgElementTrack() {
+    static const QLoggingCategory category("SvgElementTrack", QtWarningMsg);
+    return category;
+}
 
 SvgElementTrack::SvgElementTrack(const QString& targetId)
     : StaticComplexAnimator(targetId) {

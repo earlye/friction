@@ -30,7 +30,7 @@
 #include <QLoggingCategory>
 #include <QSet>
 
-Q_DECLARE_LOGGING_CATEGORY(lcSvgElementTrack)
+CORE_EXPORT const QLoggingCategory &lcSvgElementTrack();
 
 class ContainerBox;
 class BoundingBox;

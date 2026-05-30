@@ -26,7 +26,10 @@
 #ifndef SVGIMPORTER_H
 #define SVGIMPORTER_H
 
+#include <QLoggingCategory>
 #include "smartPointers/selfref.h"
+
+CORE_EXPORT const QLoggingCategory &lcSvgImport();
 
 class BoundingBox;
 class Gradient;

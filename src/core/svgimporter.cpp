@@ -47,10 +47,12 @@
 #include "regexhelpers.h"
 
 #include <QDebug>
-#include <QLoggingCategory>
 #include <yaml-cpp/yaml.h>
 
-Q_LOGGING_CATEGORY(lcSvgImport, "friction.svg.import", QtWarningMsg)
+CORE_EXPORT const QLoggingCategory &lcSvgImport() {
+    static const QLoggingCategory category("friction.svg.import", QtWarningMsg);
+    return category;
+}
 
 #define RGXS REGEX_SPACES
 

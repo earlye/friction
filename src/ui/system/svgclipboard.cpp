@@ -26,9 +26,8 @@
 #include <QGuiApplication>
 #include <QClipboard>
 #include <QDebug>
-#include <QLoggingCategory>
 
-Q_DECLARE_LOGGING_CATEGORY(lcSvgImport)
+#include "svgimporter.h"
 
 using namespace Friction::Ui;
 

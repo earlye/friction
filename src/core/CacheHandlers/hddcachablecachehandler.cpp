@@ -25,7 +25,10 @@
 
 #include "hddcachablecachehandler.h"
 
-Q_LOGGING_CATEGORY(lcCacheHandler, "friction.cachehandler", QtWarningMsg)
+CORE_EXPORT const QLoggingCategory &lcCacheHandler() {
+    static const QLoggingCategory category("friction.cachehandler", QtWarningMsg);
+    return category;
+}
 #include "pointhelpers.h"
 #include "themesupport.h"
 
