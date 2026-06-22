@@ -87,6 +87,10 @@ debug-pivot-track-attachment:
 run-debug-pivot:
     QT_LOGGING_RULES="friction.svg.import=true;friction.svgpivot=true;friction.box.pivot=true" just run-debug > log.txt 2>&1;
 
+# Debug stroke-width scale factor applied during SVG import (rawWidth, sx, sy, strokeScale, scaledWidth)
+run-debug-stroke-width:
+    QT_LOGGING_RULES="friction.svg.import=true" just run-debug 2>&1 | grep "stroke-width scale"
+
 # Debug locked-item modification attempts: signal emission + flash slot receipt + timer lifecycle
 debug-locked-items:
     QT_LOGGING_RULES="friction.locked=true" just run-debug > log.txt 2>&1;
