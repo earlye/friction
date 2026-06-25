@@ -707,7 +707,11 @@ bool AppSupport::isWayland()
 
 bool AppSupport::isFlatpak()
 {
+#ifdef Q_OS_LINUX
     return !QString(qgetenv("container")).isEmpty();
+#else
+    return false;
+#endif
 }
 
 const QString AppSupport::getAppImagePath()
@@ -1112,7 +1116,7 @@ void AppSupport::setFont(const QString &path)
 
 QString AppSupport::getOfflineDocs()
 {
-#ifdef Q_OS_LINUX
+/*#ifdef Q_OS_LINUX
     if (isFlatpak()) {
         // we can't have offline docs in a flatpak
         return QString();
@@ -1124,7 +1128,8 @@ QString AppSupport::getOfflineDocs()
     for (const auto &path : paths) {
         qCDebug(lcAppSupport) << "Checking for docs ..." << path;
         if (QFile::exists(path)) { return path; }
-    }
+    }*/
+    // offline docs are currently disabled
     return QString();
 }
 
