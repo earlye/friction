@@ -16,8 +16,13 @@ Please keep earlye-fork.md updated as new features are built and introduced.
 ## Pulling Upstream Changes
 
 - When incorporating upstream changes, use `git blame` to compare authorship and understand what changed.
+
+- Stop and ask the user what to do if any upstream changes are incompatible or contradictory to fork changes.
+
 - Prefer `QLoggingCategory`-based logging when it is already present in the fork; do not remove it in favor of plain `qDebug()`.
+
 - When done incorporating upstream changes, update the list of incorporated upstream commits below.
 
 - The last upstream commit before this fork was created: `3701b0559990eae4fa315b7215a11d46122cb97b` ("Update skia")
-- The last upstream commit incorporated into this fork: `9f0ef659581e080fca88639331eb141225c45807` ("Update canvas.cpp")
+
+- The last upstream commit incorporated into this fork: `bed346462745c9ae3f55c47e5329d4e63c24efe5` ("Disable offline docs")
