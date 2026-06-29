@@ -749,8 +749,7 @@ void BoundingBox::applyPaintSetting(const PaintSettingsApplier &setting)
 void BoundingBox::drawBoundingRect(SkCanvas * const canvas,
                                    const float invScale) {
     SkiaHelpers::drawOutlineOverlay(canvas, mSkRelBoundingRectPath,
-                                    invScale, toSkMatrix(getTotalTransform()),
-                                    true, eSizesUI::widget*0.25f);
+                                    invScale, toSkMatrix(getTotalTransform()));
 }
 
 QMatrix BoundingBox::getTotalTransform() const {

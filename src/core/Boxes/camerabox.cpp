@@ -120,6 +120,5 @@ void CameraBox::drawCameraBox(SkCanvas* const canvas, const float invScale, cons
     SkPath rectPath;
     rectPath.addRect(toSkRect(localRect));
     SkiaHelpers::drawOutlineOverlay(canvas, rectPath, invScale,
-                                    toSkMatrix(totalTransform),
-                                    true, 20.f, SK_ColorWHITE);
+                                    toSkMatrix(totalTransform));
 }
