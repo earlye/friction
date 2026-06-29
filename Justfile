@@ -63,6 +63,15 @@ run-debug-with-logs config:
     eval "$(jq -r --arg config "{{config}}" '.[$config] | to_entries[] | "export \(.key)=\(.value | @sh)"' .claude/logs.local.json)"
     just run-debug
 
+# Profile the debug build with Time Profiler; saves a .trace file and opens it in Instruments when done
+run-debug-instruments:
+    #!/usr/bin/env bash
+    set -e
+    TRACE="friction-$(date +%Y%m%d-%H%M%S).trace"
+    echo "Profiling to: ${TRACE}"
+    xctrace record --template 'Time Profiler' --output "${TRACE}" --launch -- "$(pwd)/build-debug-arm64/dmg/Friction.app/Contents/MacOS/friction"
+    open "${TRACE}"
+
 run-debug-render:
     QT_LOGGING_RULES="friction.renderoutput=true;friction.canvas=true;friction.videoencoder=true;friction.core=true" just run-debug
 
