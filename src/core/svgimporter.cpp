@@ -467,16 +467,10 @@ qsptr<ContainerBox> loadBoxesGroup(const QDomElement &groupElement,
                                    const BoxSvgAttributes &attributes,
                                    const GradientCreator& gradientCreator) {
     const QDomNodeList allRootChildNodes = groupElement.childNodes();
-    qsptr<ContainerBox> boxesGroup;
-    const bool hasTransform = attributes.hasTransform();
-    if(allRootChildNodes.count() > 1 || hasTransform || !parentGroup) {
-        boxesGroup = enve::make_shared<ContainerBox>(eBoxType::group);
-        boxesGroup->planCenterPivotPosition();
-        attributes.apply(boxesGroup.get());
-        if(parentGroup) parentGroup->addContained(boxesGroup);
-    } else {
-        boxesGroup = parentGroup->ref<ContainerBox>();
-    }
+    const qsptr<ContainerBox> boxesGroup = enve::make_shared<ContainerBox>(eBoxType::group);
+    boxesGroup->planCenterPivotPosition();
+    attributes.apply(boxesGroup.get());
+    if(parentGroup) parentGroup->addContained(boxesGroup);
 
     for(int i = 0; i < allRootChildNodes.count(); i++) {
         const QDomNode iNode = allRootChildNodes.at(i);
