@@ -177,8 +177,6 @@ public:
 
     void loadBoundingBoxAttributes(const QDomElement &element);
 
-    bool hasTransform() const;
-
     void apply(BoundingBox *box) const;
     void setFillAttribute(const QString &value);
     void setStrokeAttribute(const QString &value);
@@ -1514,15 +1512,6 @@ void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
     }
 
     mDecomposedTrans = MatrixDecomposition::decompose(mRelTransform);
-}
-
-bool BoxSvgAttributes::hasTransform() const {
-    return !(isZero4Dec(mRelTransform.dx()) &&
-             isZero4Dec(mRelTransform.dy()) &&
-             isZero4Dec(mRelTransform.m11() - 1) &&
-             isZero4Dec(mRelTransform.m22() - 1) &&
-             isZero4Dec(mRelTransform.m12()) &&
-             isZero4Dec(mRelTransform.m21()));
 }
 
 #include "Animators/paintsettingsanimator.h"
