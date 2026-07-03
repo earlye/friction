@@ -72,16 +72,34 @@ box regardless of source.
 - Any hyphen-based (or otherwise punctuated) naming convention in imported
   SVG artwork silently degrades on import.
 
-## Next steps
+## Fix decided
 
-- Decide what `prp_sFixName`'s allow-list should actually protect against
-  (likely: names that would break something specific downstream — XEV
-  export attribute values, undo/redo naming, etc.) and whether `-` (and
-  maybe other common punctuation) can simply be added to the allow-list.
-- Alternatively, consider whether SVG-imported names should skip
-  `prp_sFixName` entirely (they come from `id`/`inkscape:label`, which are
-  already valid XML attribute values) and only apply the sanitizer to
-  user-typed renames.
+Expand `Property::prp_sFixName`'s allow-list regex
+(`src/core/Properties/property.cpp:285`) to also permit `-` (underscore is
+already allowed), i.e. change
+`result.remove(QRegExp("[^A-Za-z0-9 _]"));` to
+`result.remove(QRegExp("[^A-Za-z0-9 _-]"));`.
+
+This applies uniformly everywhere `prp_sFixName`/`makeNameUnique` runs
+(SVG import via `ContainerBox::insertContained`, user-typed renames via
+`eboxorsound.cpp`, custom property auto-naming), rather than special-casing
+SVG-imported names to skip sanitization. Rejected the "skip sanitizer for
+SVG imports" alternative: it would require threading a defaulted parameter
+through `insertContained`/`addContained`/`makeNameUniqueForDescendants` and
+updating 8 call sites in `svgimporter.cpp`, for no demonstrated benefit —
+research turned up no downstream breakage from hyphens in names (XEV export
+writes names as plain XML attribute values; SVG export already runs names
+through a separate `AppSupport::filterId` sanitizer before using them as
+SVG `id`s; expression bindings split paths on `.`, not name content; and
+`staticcomplexanimator.cpp:42` already hardcodes a hyphenated property name
+— "sub-path effect" — with no issues).
+
+Scope: hyphen only, not a broader punctuation allow-list. `inkscape:label`
+is free-text XML and can contain arbitrary characters, so no small
+allow-list fully round-trips every possible label — but the confirmed bug
+is specifically about hyphens, so the fix targets that without guessing at
+a wider "safe" set.
+
 - After fixing, re-verify with `just run-debug-timeline` that box names in
   `log.txt` match their source `inkscape:label` exactly, including
   hyphens.
@@ -99,3 +117,16 @@ box regardless of source.
   separately) — split into its own issue since it's a distinct, more
   systemic bug in a different subsystem (name sanitization vs. SVG group
   construction).
+
+- Q: Expand `prp_sFixName`'s allow-list, or make SVG-imported names skip
+  sanitization entirely? — A: Expand the allow-list (uniform, one-line
+  fix). Researched downstream uses of `prp_getName()` first (expression
+  bindings, XEV export, SVG export id sanitization, existing hyphenated
+  name precedent) and found no evidence hyphens break anything, making the
+  more invasive per-call-site skip unnecessary.
+- Q: What counts as "legal" in the source XML/SVG that should inform the
+  allow-list's breadth? — A: `inkscape:label` is free-text XML (almost any
+  character survives parsing); `id` is constrained to the XML `Name` token
+  set. Since labels aren't actually constrained to a small legal set, no
+  allow-list can fully round-trip arbitrary labels — so scope the fix to
+  the confirmed bug (hyphen) rather than guessing at a broader "safe" set.
