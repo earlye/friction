@@ -32,6 +32,8 @@
 #include "Boxes/svgelementtrack.h"
 #include "Boxes/svgflipbooktrack.h"
 
+#include <QSet>
+
 using SvgLinkBoxBase =
     ExternalLinkBoxT<ContainerBox,
                      SvgFileCacheHandler>;
@@ -67,7 +69,7 @@ private:
     void resolveElementTracks();
     void wireTrack(const qsptr<SvgElementTrack>& track);
     void wireFlipbookTrack(const qsptr<SvgFlipbookTrack>& track);
-    void collectFlipbookDescs(ContainerBox* container);
+    void collectFlipbookDescs(ContainerBox* container, QSet<QString>& liveOwnerIds);
     void collectPivotDescs(ContainerBox* container);
     void fileHandlerConnector(ConnContext &conn, SvgFileCacheHandler *obj);
     void fileHandlerAfterAssigned(SvgFileCacheHandler *obj);

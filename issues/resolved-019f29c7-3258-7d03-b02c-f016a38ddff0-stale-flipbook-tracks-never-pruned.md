@@ -78,19 +78,42 @@ track for control of the same boxes.
 
 ## Next steps
 
+Resolved design (see Grill Log below):
+
 - In `resolveElementTracks`, after re-collecting from the current SVG,
-  remove any `mFlipbookTracks`/`mElementTracks` entry whose name doesn't
-  correspond to any desc found in this pass (mirroring how new ones are
-  added, but for removal).
-- Decide on the right handling for tracks that have existing keyframes when
-  removed — likely warn/confirm before dropping user-authored animation
-  data, or offer a "orphaned tracks" cleanup action in the track's context
-  menu rather than silent auto-removal.
-- Consider tightening `mOrphaned` to also flag *partial* resolution
-  failures (not just total), and to flag when the same physical box is
-  claimed by more than one track's resolved-page set, so duplicate/stale
-  tracks are visible in the UI immediately instead of requiring a debug log
-  to notice.
+  determine per track whether its name matches any live desc found in this
+  pass:
+  - **Element tracks**: `SvgElementTrack::resolveTarget` already searches
+    by exact name each pass, so `mOrphaned` is already correct for the
+    plain-rename case (no cached pointer involved). The only missing piece
+    is removal.
+  - **Flipbook tracks**: `SvgFlipbookTrack::resolveTargets` must **not**
+    be called at all for a track whose owner name doesn't match any live
+    flipbook desc this pass — its page-map values resolve via a global
+    (unscoped) search that can coincidentally still succeed after a
+    rename, which is why the orphaned indicator never fired for the
+    `Mouth`/`mouth` case. Compute the live owner-name set during
+    `collectFlipbookDescs` and skip `resolveTargets`/`syncToTargets` for
+    any track not in that set.
+- For a track whose name doesn't match any live desc this pass:
+  - If its animator subtree has **no keyframes** (reuse the existing
+    `subtreeHasKeys`-style check already used in
+    `svgelementtrack.cpp:339`), auto-remove it silently — there's no user
+    data to lose.
+  - If it **does** have keyframes, keep it, force `mOrphaned = true` (add
+    a `setOrphaned(bool)` setter to `SvgFlipbookTrack` mirroring the one
+    `SvgElementTrack` already has), and make sure it no longer syncs to
+    any resolved target (for flipbook tracks: skip `resolveTargets`/
+    `syncToTargets`, leaving `mResolvedPages` empty). The user then
+    notices via the existing red-tint timeline indicator
+    (`prp_drawTimelineControls`) and deletes it manually via the existing
+    "Delete Track" context-menu action (`svgflipbooktrack.cpp:136-148`,
+    `svgelementtrack.cpp:419-448`) — no new UI needed.
+- Out of scope for this fix (tracked separately in
+  `issue-019f29f2-ca57-7811-8f78-e1039db994b1-tighten-orphan-detection.md`):
+  tightening `mOrphaned` to flag *partial* resolution failures, and
+  detecting when two tracks' resolved targets collide on the same physical
+  box.
 
 ## Grill Log
 
@@ -105,3 +128,14 @@ track for control of the same boxes.
   into its own issue since it's a distinct track-lifecycle bug, unrelated
   to the SVG-import bugs (hyphen-stripping, single-child flattening) also
   found during the same investigation.
+- Q: Should stale-track pruning be silent auto-removal, always-manual, or
+  something in between? — A: Auto-remove only if the track has no
+  keyframes; otherwise keep it, force it orphaned, and stop it from
+  syncing so the user notices and deletes it manually via the existing
+  "Delete Track" context-menu action (confirmed this action already
+  exists on both track types).
+- Q: Is tightening `mOrphaned` for partial resolution / cross-track
+  conflicts in scope for this fix? — A: No, out of scope; split into
+  `issue-019f29f2-ca57-7811-8f78-e1039db994b1-tighten-orphan-detection.md`.
+- Q: Create that follow-up issue file now or just note it? — A: Create it
+  now, cross-linked, same as how this issue itself was split out.
