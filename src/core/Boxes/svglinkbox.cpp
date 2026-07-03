@@ -105,19 +105,36 @@ static void collectAnimationNodes(BoundingBox* box,
     }
 }
 
+static bool subtreeHasKeys(const Property* prop) {
+    if (const auto* anim = enve_cast<const Animator*>(prop)) {
+        if (anim->anim_hasKeys()) return true;
+    }
+    if (const auto* complex = enve_cast<const ComplexAnimator*>(prop)) {
+        const int n = complex->ca_getNumberOfChildren();
+        for (int i = 0; i < n; i++) {
+            if (subtreeHasKeys(complex->ca_getChildAt(i))) return true;
+        }
+    }
+    return false;
+}
+
 void SvgLinkBox::resolveElementTracks() {
     ContainerBox* svgRoot = nullptr;
     const auto& contained = getContainedBoxes();
     if (!contained.isEmpty()) {
         svgRoot = enve_cast<ContainerBox*>(contained.first());
     }
+    QVector<SvgElementTrack*> elementTracksToRemove;
     for (const auto& track : mElementTracks) {
         BoundingBox* targetBox = track->resolveTarget(svgRoot);
         if (targetBox) {
             track->reconcileWithTarget(targetBox);
             track->syncToTarget(targetBox);
+        } else if (!subtreeHasKeys(track.get())) {
+            elementTracksToRemove << track.get();
         }
     }
+    for (auto* track : elementTracksToRemove) removeElementTrack(track);
     if (!svgRoot) return;
     QList<BoundingBox*> animationNodes;
     collectAnimationNodes(svgRoot, animationNodes);
@@ -130,12 +147,22 @@ void SvgLinkBox::resolveElementTracks() {
             });
         if (!exists) addElementTrack(name);
     }
-    for (const auto& track : mFlipbookTracks) {
-        track->setPageMap({});
-    }
-    collectFlipbookDescs(svgRoot);
+    QSet<QString> liveFlipbookOwners;
+    collectFlipbookDescs(svgRoot, liveFlipbookOwners);
     collectPivotDescs(svgRoot);
+    QVector<SvgFlipbookTrack*> flipbookTracksToRemove;
     for (const auto& track : mFlipbookTracks) {
+        if (liveFlipbookOwners.contains(track->prp_getName())) continue;
+        if (subtreeHasKeys(track.get())) {
+            track->setPageMap({});
+            track->setOrphaned(true);
+        } else {
+            flipbookTracksToRemove << track.get();
+        }
+    }
+    for (auto* track : flipbookTracksToRemove) removeFlipbookTrack(track);
+    for (const auto& track : mFlipbookTracks) {
+        if (!liveFlipbookOwners.contains(track->prp_getName())) continue;
         track->resolveTargets(svgRoot);
         track->syncToTargets();
     }
@@ -229,7 +256,8 @@ void SvgLinkBox::collectFollowerDescs(ContainerBox* svgRoot,
     }
 }
 
-void SvgLinkBox::collectFlipbookDescs(ContainerBox* container) {
+void SvgLinkBox::collectFlipbookDescs(ContainerBox* container,
+                                       QSet<QString>& liveOwnerIds) {
     for (auto* box : container->getContainedBoxes()) {
         for (const auto& doc : box->getDescYaml()) {
             if (!doc.isYaml) continue;
@@ -243,6 +271,7 @@ void SvgLinkBox::collectFlipbookDescs(ContainerBox* container) {
                         QString::fromStdString(entry.second.as<std::string>());
                 if (pageMap.isEmpty()) break;
                 const QString ownerId = box->prp_getName();
+                liveOwnerIds.insert(ownerId);
                 SvgFlipbookTrack* existing = nullptr;
                 for (const auto& track : mFlipbookTracks) {
                     if (track->prp_getName() == ownerId) { existing = track.get(); break; }
@@ -258,7 +287,7 @@ void SvgLinkBox::collectFlipbookDescs(ContainerBox* container) {
             } catch (...) {}
         }
         if (const auto sub = enve_cast<ContainerBox*>(box))
-            collectFlipbookDescs(sub);
+            collectFlipbookDescs(sub, liveOwnerIds);
     }
 }
 

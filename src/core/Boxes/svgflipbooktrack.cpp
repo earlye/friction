@@ -76,6 +76,12 @@ void SvgFlipbookTrack::setOwnerBox(ContainerBox* ownerBox) {
     mOwnerBox = ownerBox;
 }
 
+void SvgFlipbookTrack::setOrphaned(const bool orphaned) {
+    if (mOrphaned == orphaned) return;
+    mOrphaned = orphaned;
+    SWT_scheduleContentUpdate(SWT_BoxRule::all);
+}
+
 void SvgFlipbookTrack::resolveTargets(ContainerBox* svgRoot) {
     mResolvedPages.clear();
     bool anyResolved = false;

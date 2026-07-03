@@ -43,6 +43,7 @@ public:
     void setPageMap(const QMap<int, QString>& pageMap);
     void setOwnerBox(ContainerBox* ownerBox);
     bool isOrphaned() const { return mOrphaned; }
+    void setOrphaned(bool orphaned);
 
     void resolveTargets(ContainerBox* svgRoot);
     void syncToTargets();
