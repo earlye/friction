@@ -177,8 +177,6 @@ public:
 
     void loadBoundingBoxAttributes(const QDomElement &element);
 
-    bool hasTransform() const;
-
     void apply(BoundingBox *box) const;
     void setFillAttribute(const QString &value);
     void setStrokeAttribute(const QString &value);
@@ -467,16 +465,10 @@ qsptr<ContainerBox> loadBoxesGroup(const QDomElement &groupElement,
                                    const BoxSvgAttributes &attributes,
                                    const GradientCreator& gradientCreator) {
     const QDomNodeList allRootChildNodes = groupElement.childNodes();
-    qsptr<ContainerBox> boxesGroup;
-    const bool hasTransform = attributes.hasTransform();
-    if(allRootChildNodes.count() > 1 || hasTransform || !parentGroup) {
-        boxesGroup = enve::make_shared<ContainerBox>(eBoxType::group);
-        boxesGroup->planCenterPivotPosition();
-        attributes.apply(boxesGroup.get());
-        if(parentGroup) parentGroup->addContained(boxesGroup);
-    } else {
-        boxesGroup = parentGroup->ref<ContainerBox>();
-    }
+    const qsptr<ContainerBox> boxesGroup = enve::make_shared<ContainerBox>(eBoxType::group);
+    boxesGroup->planCenterPivotPosition();
+    attributes.apply(boxesGroup.get());
+    if(parentGroup) parentGroup->addContained(boxesGroup);
 
     for(int i = 0; i < allRootChildNodes.count(); i++) {
         const QDomNode iNode = allRootChildNodes.at(i);
@@ -1520,15 +1512,6 @@ void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
     }
 
     mDecomposedTrans = MatrixDecomposition::decompose(mRelTransform);
-}
-
-bool BoxSvgAttributes::hasTransform() const {
-    return !(isZero4Dec(mRelTransform.dx()) &&
-             isZero4Dec(mRelTransform.dy()) &&
-             isZero4Dec(mRelTransform.m11() - 1) &&
-             isZero4Dec(mRelTransform.m22() - 1) &&
-             isZero4Dec(mRelTransform.m12()) &&
-             isZero4Dec(mRelTransform.m21()));
 }
 
 #include "Animators/paintsettingsanimator.h"
