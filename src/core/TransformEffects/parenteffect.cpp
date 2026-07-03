@@ -93,8 +93,6 @@ void ParentEffect::prp_drawCanvasControls(SkCanvas * const canvas,
     SkiaHelpers::drawOutlineOverlay(canvas,
                                     pivotLink,
                                     invScale,
-                                    true,
-                                    6.0f,
                                     SK_ColorWHITE);
 }
 

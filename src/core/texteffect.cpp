@@ -268,9 +268,9 @@ void TextEffect::prp_drawCanvasControls(
     const auto transform = toSkMatrix(eEffect::getTransform());
 
     SkiaHelpers::drawOutlineOverlay(canvas, topLine, invScale,
-                                    transform, true, 5.f, SK_ColorBLUE);
+                                    transform, SK_ColorBLUE);
     SkiaHelpers::drawOutlineOverlay(canvas, bottomLine, invScale,
-                                    transform, true, 5.f, SK_ColorBLUE);
+                                    transform, SK_ColorBLUE);
     SkiaHelpers::drawOutlineOverlay(canvas, path, invScale,
                                     transform, SK_ColorRED);
     SkiaHelpers::drawOutlineOverlay(canvas, cyclicalPath, invScale,
