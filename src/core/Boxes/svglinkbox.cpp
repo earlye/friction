@@ -134,7 +134,13 @@ void SvgLinkBox::resolveElementTracks() {
             elementTracksToRemove << track.get();
         }
     }
-    for (auto* track : elementTracksToRemove) removeElementTrack(track);
+    // Only prune once we actually have a resolved SVG tree to check names
+    // against — an unloaded/failed svgRoot must not be mistaken for "this
+    // track's owner is gone", or every keyless track would be wiped out
+    // and would need to regenerate on the next successful load.
+    if (svgRoot) {
+        for (auto* track : elementTracksToRemove) removeElementTrack(track);
+    }
     if (!svgRoot) return;
     QList<BoundingBox*> animationNodes;
     collectAnimationNodes(svgRoot, animationNodes);
@@ -261,17 +267,20 @@ void SvgLinkBox::collectFlipbookDescs(ContainerBox* container,
     for (auto* box : container->getContainedBoxes()) {
         for (const auto& doc : box->getDescYaml()) {
             if (!doc.isYaml) continue;
+            const QString ownerId = box->prp_getName();
             try {
                 const auto node = YAML::Load(doc.content.toStdString());
                 if (!node["kind"] || node["kind"].as<std::string>() != "flipbook") continue;
+                // Owner still declares a flipbook desc, even if it fails to
+                // parse below: don't let a malformed map cause this track
+                // to be mistaken for a renamed-away/stale one.
+                liveOwnerIds.insert(ownerId);
                 if (!node["map"]) break;
                 QMap<int, QString> pageMap;
                 for (const auto& entry : node["map"])
                     pageMap[entry.first.as<int>()] =
                         QString::fromStdString(entry.second.as<std::string>());
                 if (pageMap.isEmpty()) break;
-                const QString ownerId = box->prp_getName();
-                liveOwnerIds.insert(ownerId);
                 SvgFlipbookTrack* existing = nullptr;
                 for (const auto& track : mFlipbookTracks) {
                     if (track->prp_getName() == ownerId) { existing = track.get(); break; }
@@ -284,7 +293,10 @@ void SvgLinkBox::collectFlipbookDescs(ContainerBox* container,
                 existing->setOwnerBox(enve_cast<ContainerBox*>(box));
                 existing->setPageMap(pageMap);
                 break;
-            } catch (...) {}
+            } catch (...) {
+                qCWarning(lcSvgFlipbookTrack) << "collectFlipbookDescs: failed to parse"
+                                              << "flipbook desc for" << ownerId;
+            }
         }
         if (const auto sub = enve_cast<ContainerBox*>(box))
             collectFlipbookDescs(sub, liveOwnerIds);
