@@ -197,6 +197,11 @@ protected:
     FillSvgAttributes mFillAttributes;
     StrokeSvgAttributes mStrokeAttributes;
     TextSvgAttributes mTextAttributes;
+
+    // once set by an ancestor's display:none/visibility:hidden, stays set:
+    // a child's own display:inline can't undo an ancestor being removed
+    // from the render tree
+    bool mHidden = false;
 };
 
 class PathAnimator;
@@ -1258,6 +1263,7 @@ void BoxSvgAttributes::setParent(const BoxSvgAttributes &parent) {
     mStrokeAttributes = parent.getStrokeAttributes();
     mTextAttributes = parent.getTextAttributes();
     mFillRule = parent.getFillRule();
+    mHidden = parent.mHidden;
 }
 
 SkPathFillType BoxSvgAttributes::getFillRule() const {
@@ -1355,7 +1361,7 @@ void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
 
         case 'd':
             if(name == "display") {
-                //display = value;
+                if(value == "none") mHidden = true;
             }
             break;
 
@@ -1477,7 +1483,7 @@ void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
             if(name == "vector-effect") {
                 //vectorEffect = value;
             } else if(name == "visibility") {
-                //visibility = value;
+                if(value == "hidden") mHidden = true;
             }
             break;
 
@@ -1635,6 +1641,8 @@ void StrokeSvgAttributes::apply(BoundingBox *box, const qreal scale) const {
 
 void BoxSvgAttributes::apply(BoundingBox *box) const
 {
+    if (mHidden) { box->setVisibleFromAnimation(false); }
+
     if (!mLabel.isEmpty()) {
         box->prp_setName(mLabel);
         box->setProperty("svgInkscapeLabel", mLabel);
