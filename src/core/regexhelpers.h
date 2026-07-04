@@ -27,7 +27,7 @@
 #define REGEXHELPERS_H
 
 #define REGEX_SPACES "\\s*"
-#define REGEX_FLOAT "(-?[\\.|\\d]+)"
+#define REGEX_FLOAT "(-?[\\.|\\d]+(?:[eE][-+]?\\d+)?)"
 #define REGEX_SINGLE_FLOAT REGEX_SPACES REGEX_FLOAT REGEX_SPACES
 #define REGEX_SEPARATOR REGEX_SPACES "[,|\\s+]" REGEX_SPACES
 

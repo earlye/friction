@@ -67,6 +67,8 @@ void SvgElementTrack::setOrphaned(const bool orphaned) {
 
 static BoundingBox* findDescendantByName(ContainerBox* container,
                                          const QString& name) {
+    if (container->prp_getName() == name) return container;
+    if (container->property("svgElementId").toString() == name) return container;
     for (auto* box : container->getContainedBoxes()) {
         if (box->prp_getName() == name) return box;
         if (box->property("svgElementId").toString() == name) return box;
