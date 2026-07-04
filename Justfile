@@ -124,6 +124,17 @@ run-debug-4a539d16b258:
 run-debug-57a4e9a8842e:
     QT_LOGGING_RULES="friction.svg.import=true;friction.containerbox.insert=true;SvgElementTrack=true" just run-debug > log.txt 2>&1;
 
+# Debug issue 66b971d67224: scale gizmo permanently locked at exactly 0 (multiplicative update)
+run-debug-66b971d67224:
+    QT_LOGGING_RULES="friction.animator=true" just run-debug > log.txt 2>&1;
+
+# Debug issue 3ecf05783ce1: bounding box incredibly oversized after 66b971d67224's scale fix
+# Reproduces on plain SVG link/import (not just the scale gizmo) - watch for
+# "exploded scale" warnings from the matrix decomposition in svgimporter.cpp,
+# and pivot before/after traces from applyPivotDescIfPresent (friction.svgpivot)
+run-debug-3ecf05783ce1:
+    QT_LOGGING_RULES="friction.animator=true;friction.svgpivot=true;friction.box.pivot=true;friction.box.render=true;friction.svg.import=true" just run-debug > log.txt 2>&1;
+
 # Produce the universal DMG from the two arch builds
 package: build
     #!/usr/bin/env bash

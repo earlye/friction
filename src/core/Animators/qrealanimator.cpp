@@ -687,7 +687,16 @@ void QrealAnimator::incSavedValueToCurrentValue(const qreal incBy) {
 }
 
 void QrealAnimator::multSavedValueToCurrentValue(const qreal multBy) {
-    setCurrentBaseValue(mSavedCurrentValue * multBy);
+    // A saved value of exactly 0 can never escape 0 via multiplication
+    // (e.g. the scale gizmo drag). Seed it with a small nonzero value so
+    // the drag has something to act on, without snapping straight to a
+    // "full size" 1 on the very first pixel of movement.
+    const qreal seed = mSavedCurrentValue == 0 ? 0.1 : mSavedCurrentValue;
+    qCDebug(lcAnimator) << "multSavedValueToCurrentValue" << prp_getName()
+                         << "savedValue=" << mSavedCurrentValue
+                         << "seed=" << seed << "multBy=" << multBy
+                         << "result=" << seed * multBy;
+    setCurrentBaseValue(seed * multBy);
 }
 
 void QrealAnimator::setCurrentBaseValueNoUpdate(const qreal newValue) {

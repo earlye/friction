@@ -618,8 +618,15 @@ void ContainerBox::updateRelBoundingRect() {
     for(int i = minMax.fMin; i <= minMax.fMax; i++) {
         const auto& child = mContainedBoxes.at(i);
         if(child->isVisibleAndInVisibleDurationRect()) {
-            SkPath childPath;
             const auto childRel = child->getRelBoundingRect();
+            // A group left with no visible content right now (e.g. every
+            // flipbook-follower page hidden) reports (0,0,0,0), Skia's empty-
+            // path default. Unioning that point in would pull the parent's
+            // bounding box out to wherever the child's local origin maps in
+            // parent space (often (0,0)), regardless of real content.
+            if(childRel.width() <= 0 && childRel.height() <= 0) continue;
+
+            SkPath childPath;
             childPath.addRect(toSkRect(childRel));
 
             const auto childRelTrans = child->getRelativeTransformAtCurrentFrame();
