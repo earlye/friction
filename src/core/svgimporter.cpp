@@ -468,7 +468,12 @@ qsptr<ContainerBox> loadBoxesGroup(const QDomElement &groupElement,
     const qsptr<ContainerBox> boxesGroup = enve::make_shared<ContainerBox>(eBoxType::group);
     boxesGroup->planCenterPivotPosition();
     attributes.apply(boxesGroup.get());
-    if(parentGroup) parentGroup->addContained(boxesGroup);
+    if(parentGroup) {
+        parentGroup->addContained(boxesGroup);
+        qCDebug(lcSvgImport) << "loadBoxesGroup: added" << boxesGroup->prp_getName()
+                             << "to parent" << parentGroup->prp_getName()
+                             << "parentChildCount:" << parentGroup->getContainedBoxesCount();
+    }
 
     for(int i = 0; i < allRootChildNodes.count(); i++) {
         const QDomNode iNode = allRootChildNodes.at(i);
@@ -477,6 +482,8 @@ qsptr<ContainerBox> loadBoxesGroup(const QDomElement &groupElement,
                         attributes, gradientCreator);
         }
     }
+    qCDebug(lcSvgImport) << "loadBoxesGroup: finished" << boxesGroup->prp_getName()
+                         << "finalChildCount:" << boxesGroup->getContainedBoxesCount();
     return boxesGroup;
 }
 
@@ -1107,8 +1114,17 @@ void loadElement(const QDomElement &element,
         if(tagName == "g") {
             const auto group = loadBoxesGroup(element, parentGroup,
                                               attributes, gradientCreator);
-            if(group->getContainedBoxesCount() == 0)
-                group->removeFromParent_k();
+            if(group->getContainedBoxesCount() == 0) {
+                qCDebug(lcSvgImport) << "loadElement: pruning empty group"
+                                     << group->prp_getName()
+                                     << "descDocs:" << group->getDescYaml().count();
+                // cascadeIfParentEmptied=false: during import an ancestor
+                // group can be momentarily empty mid-loop (its other
+                // children not yet added), so the normal cascade-prune-
+                // ancestor-too behavior (correct for interactive deletion)
+                // would silently orphan a still-under-construction parent.
+                group->removeFromParent_k(/*cascadeIfParentEmptied=*/false);
+            }
         } else if(tagName == "circle" || tagName == "ellipse") {
             loadCircle(element, parentGroup, attributes);
         } else if(tagName == "rect") {
@@ -1618,7 +1634,11 @@ void BoxSvgAttributes::apply(BoundingBox *box) const
     } else if (!mId.isEmpty()) { box->prp_setName(mId); }
     if (!mId.isEmpty()) { box->setProperty("svgElementId", mId); }
 
-    if (!mDescYaml.isEmpty()) box->setDescYaml(mDescYaml);
+    if (!mDescYaml.isEmpty()) {
+        box->setDescYaml(mDescYaml);
+        qCDebug(lcSvgImport) << "BoxSvgAttributes::apply: attached" << mDescYaml.count()
+                             << "desc doc(s) to box" << box->prp_getName();
+    }
 
     if (const auto path = enve_cast<PathBox*>(box)) {
         const qreal m11 = mRelTransform.m11();

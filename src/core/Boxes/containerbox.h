@@ -197,7 +197,8 @@ public:
     void updateContainedIds(const int firstId, const int lastId);
     int getContainedIndex(eBoxOrSound * const child);
     qsptr<eBoxOrSound> takeContained_k(const int id);
-    void removeContained_k(const qsptr<eBoxOrSound> &child);
+    void removeContained_k(const qsptr<eBoxOrSound> &child,
+                           const bool cascadeIfEmptied = true);
     void increaseContainedZInList(eBoxOrSound * const child);
     void decreaseContainedZInList(eBoxOrSound * const child);
     void bringContainedToEndList(eBoxOrSound * const child);

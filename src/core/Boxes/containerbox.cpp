@@ -44,6 +44,9 @@
 #include "ReadWrite/evformat.h"
 #include "internallinkbox.h"
 
+#include <QLoggingCategory>
+Q_LOGGING_CATEGORY(lcContainerBoxInsert, "friction.containerbox.insert", QtWarningMsg)
+
 class FlipBookProperty : public BoolPropertyContainer {
     e_OBJECT
 
@@ -1183,6 +1186,11 @@ void ContainerBox::addContained(const qsptr<eBoxOrSound>& child) {
 
 void ContainerBox::insertContained(const int id, const qsptr<eBoxOrSound>& child)
 {
+    qCDebug(lcContainerBoxInsert) << "insertContained: this=" << prp_getName()
+                                  << "child=" << child->prp_getName()
+                                  << "id=" << id
+                                  << "alreadyParentedHere=" << (child->getParentGroup() == this)
+                                  << "countBefore=" << mContained.count();
     if (child->getParentGroup() == this) {
         const int cId = mContained.indexOf(child);
         moveContainedInList(child.get(), cId, (cId < id ? id - 1 : id));
@@ -1197,10 +1205,16 @@ void ContainerBox::insertContained(const int id, const qsptr<eBoxOrSound>& child
         const auto nameCtxt = parentScene ? parentScene : this;
         const QString newName = nameCtxt->makeNameUniqueForDescendants(oldName);
         child->prp_setName(newName);
+        if (newName != oldName) {
+            qCDebug(lcContainerBoxInsert) << "insertContained: renamed" << oldName
+                                          << "->" << newName << "(name collision)";
+        }
     }
 
     auto& connCtx = mContained.insertObj(id, child);
     child->setParentGroup(this);
+    qCDebug(lcContainerBoxInsert) << "insertContained: after insertObj, this=" << prp_getName()
+                                  << "countAfter=" << mContained.count();
 
     updateContainedIds(id);
 
@@ -1319,6 +1333,9 @@ bool ContainerBox::replaceContained(const qsptr<eBoxOrSound> &replaced,
 void ContainerBox::removeContained(const qsptr<eBoxOrSound>& child) {
     const int index = getContainedIndex(child.get());
     if(index < 0) return;
+    qCDebug(lcContainerBoxInsert) << "removeContained: this=" << prp_getName()
+                                  << "child=" << child->prp_getName()
+                                  << "index=" << index;
     removeContainedFromList(index);
     //child->setParent(nullptr);
 }
@@ -1345,9 +1362,10 @@ qsptr<eBoxOrSound> ContainerBox::takeContained_k(const int id) {
     return child;
 }
 
-void ContainerBox::removeContained_k(const qsptr<eBoxOrSound> &child) {
+void ContainerBox::removeContained_k(const qsptr<eBoxOrSound> &child,
+                                     const bool cascadeIfEmptied) {
     removeContained(child);
-    if(mContained.isEmpty() && getParentGroup()) {
+    if(cascadeIfEmptied && mContained.isEmpty() && getParentGroup()) {
         removeFromParent_k();
     }
 }

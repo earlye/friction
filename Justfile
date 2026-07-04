@@ -81,6 +81,10 @@ run-debug-preview:
 run-debug-timeline:
     QT_LOGGING_RULES="SvgElementTrack=true;friction.svgflipbooktrack=true" just run-debug
 
+# Debug glasses-flipbook vanishing from the tree (issue 290e8ced0979) — kept up to date with whatever tracing is currently in place
+run-debug-290e8ced0979:
+    QT_LOGGING_RULES="SvgElementTrack=true;friction.svgflipbooktrack=true;friction.svg.import=true;friction.containerbox.insert=true" just run-debug
+
 run-debug-camera:
     QT_LOGGING_RULES="friction.camera=true;friction.renderoutput=true;friction.renderhandler=true" just run-debug
 

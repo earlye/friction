@@ -80,7 +80,7 @@ public:
 
     void setParentGroup(ContainerBox * const parent);
     ContainerBox *getParentGroup() const { return mParentGroup; }
-    void removeFromParent_k();
+    void removeFromParent_k(const bool cascadeIfParentEmptied = true);
     bool isAncestor(const BoundingBox * const box) const;
 
     void drawDurationRectangle(
