@@ -18,9 +18,9 @@ Please keep earlye-fork.md updated as new features are built and introduced.
   the user an easy way to manually reproduce and test the issue
   throughout the session, and keeps a record of which log categories
   were relevant.
-- `{issue-id}` is the short id used in the issue's filename and branch
-  name (e.g. `issues/issue-<uuid7>-{issue-id}-slug.md` and branch
-  `issues/{issue-id}`).
+- `{issue-id}` is the last hyphen-delimited segment of the issue's
+  uuid7 (e.g. filename `issues/issue-{uuid7}-slug.md` where the uuid7
+  ends in `...-{issue-id}`, and branch `issues/{issue-id}`).
 - Keep the recipe up to date as tracing needs change during
   investigation.
 

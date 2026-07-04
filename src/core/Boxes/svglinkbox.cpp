@@ -444,7 +444,9 @@ void SvgLinkBox::applyPivotDescIfPresent(BoundingBox* box) {
             // so that decomposition already bakes in a translate compensating
             // for any off-origin rotation. Moving the pivot to svgPivotPos
             // without re-deriving position from decomposePivoted would apply
-            // that compensation a second time, doubling the box's translation.
+            // that compensation a second time - doubling the box's translation
+            // when svgPivotPos matches the SVG's original rotation center, as
+            // it typically does for artist-placed pivot markers.
             const QMatrix currentTransform = target->getRelativeTransformAtCurrentFrame();
             const auto values = MatrixDecomposition::decomposePivoted(currentTransform, pivot);
             transformAdv->setValues(values);

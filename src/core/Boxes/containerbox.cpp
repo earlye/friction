@@ -621,8 +621,9 @@ void ContainerBox::updateRelBoundingRect() {
             const auto childRel = child->getRelBoundingRect();
             // A group left with no visible content right now (e.g. every
             // flipbook-follower page hidden) reports (0,0,0,0), Skia's empty-
-            // path default. Unioning that point in would anchor the parent's
-            // bounding box to the local origin regardless of real content.
+            // path default. Unioning that point in would pull the parent's
+            // bounding box out to wherever the child's local origin maps in
+            // parent space (often (0,0)), regardless of real content.
             if(childRel.width() <= 0 && childRel.height() <= 0) continue;
 
             SkPath childPath;
