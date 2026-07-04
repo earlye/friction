@@ -135,6 +135,14 @@ run-debug-66b971d67224:
 run-debug-3ecf05783ce1:
     QT_LOGGING_RULES="friction.animator=true;friction.svgpivot=true;friction.box.pivot=true;friction.box.render=true;friction.svg.import=true" just run-debug > log.txt 2>&1;
 
+# Debug issue 1306445d371c: SVG flipbook pages stay hidden regardless of
+# selected page. Root cause: display:none baked into every descendant of a
+# hidden ancestor at import time, which SvgFlipbookTrack's page-container-only
+# visibility toggle can never undo. Watch friction.svg.import for per-element
+# hidden state and friction.svgflipbooktrack for syncToTargets/page visibility.
+run-debug-1306445d371c:
+    QT_LOGGING_RULES="friction.svg.import=true;friction.svgflipbooktrack=true;friction.containerbox.insert=true" just run-debug > log.txt 2>&1;
+
 # Produce the universal DMG from the two arch builds
 package: build
     #!/usr/bin/env bash
