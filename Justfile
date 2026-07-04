@@ -112,6 +112,10 @@ debug-locked-items:
 run-debug-locked-slider:
     QT_LOGGING_RULES="friction.locked=true" just run-debug
 
+# Debug issue 1148748f4eb9: ruby's arms not flipbooking/following properly
+run-debug-1148748f4eb9:
+    QT_LOGGING_RULES="friction.svg.import=true;friction.svgflipbooktrack=true;friction.svgfollower=true;SvgElementTrack=true;friction.box.pivot=true;friction.svgpivot=true" just run-debug > log.txt 2>&1;
+
 # Produce the universal DMG from the two arch builds
 package: build
     #!/usr/bin/env bash

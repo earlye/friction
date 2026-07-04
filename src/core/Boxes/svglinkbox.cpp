@@ -154,7 +154,9 @@ void SvgLinkBox::resolveElementTracks() {
         if (!exists) addElementTrack(name);
     }
     QSet<QString> liveFlipbookOwners;
+    applyFlipbookDescIfPresent(svgRoot, liveFlipbookOwners);
     collectFlipbookDescs(svgRoot, liveFlipbookOwners);
+    applyPivotDescIfPresent(svgRoot);
     collectPivotDescs(svgRoot);
     QVector<SvgFlipbookTrack*> flipbookTracksToRemove;
     for (const auto& track : mFlipbookTracks) {
@@ -262,110 +264,118 @@ void SvgLinkBox::collectFollowerDescs(ContainerBox* svgRoot,
     }
 }
 
+void SvgLinkBox::applyFlipbookDescIfPresent(BoundingBox* box,
+                                             QSet<QString>& liveOwnerIds) {
+    const auto boxAsContainer = enve_cast<ContainerBox*>(box);
+    qCDebug(lcSvgFlipbookTrack) << "collectFlipbookDescs: visiting box"
+                                << box->prp_getName()
+                                << "isContainer:" << (bool)boxAsContainer
+                                << "childCount:" << (boxAsContainer ? boxAsContainer->getContainedBoxesCount() : -1)
+                                << "descDocs:" << box->getDescYaml().count();
+    for (const auto& doc : box->getDescYaml()) {
+        qCDebug(lcSvgFlipbookTrack) << "collectFlipbookDescs: box" << box->prp_getName()
+                                    << "desc isYaml:" << doc.isYaml
+                                    << "content:" << doc.content;
+        if (!doc.isYaml) continue;
+        const QString ownerId = box->prp_getName();
+        try {
+            const auto node = YAML::Load(doc.content.toStdString());
+            if (!node["kind"] || node["kind"].as<std::string>() != "flipbook") continue;
+            // Owner still declares a flipbook desc, even if it fails to
+            // parse below: don't let a malformed map cause this track
+            // to be mistaken for a renamed-away/stale one.
+            liveOwnerIds.insert(ownerId);
+            if (!node["map"]) break;
+            QMap<int, QString> pageMap;
+            for (const auto& entry : node["map"])
+                pageMap[entry.first.as<int>()] =
+                    QString::fromStdString(entry.second.as<std::string>());
+            if (pageMap.isEmpty()) break;
+            qCDebug(lcSvgFlipbookTrack) << "collectFlipbookDescs: resolved flipbook desc for"
+                                        << ownerId << "pages:" << pageMap;
+            SvgFlipbookTrack* existing = nullptr;
+            for (const auto& track : mFlipbookTracks) {
+                if (track->prp_getName() == ownerId) { existing = track.get(); break; }
+            }
+            if (!existing) {
+                auto track = enve::make_shared<SvgFlipbookTrack>(ownerId);
+                wireFlipbookTrack(track);
+                existing = track.get();
+            }
+            existing->setOwnerBox(enve_cast<ContainerBox*>(box));
+            existing->setPageMap(pageMap);
+            break;
+        } catch (const std::exception& e) {
+            qCWarning(lcSvgFlipbookTrack) << "collectFlipbookDescs: YAML parse failed for box"
+                                          << ownerId << ":" << e.what();
+        } catch (...) {
+            qCWarning(lcSvgFlipbookTrack) << "collectFlipbookDescs: unknown exception parsing"
+                                              " desc for box" << ownerId;
+        }
+    }
+}
+
 void SvgLinkBox::collectFlipbookDescs(ContainerBox* container,
                                        QSet<QString>& liveOwnerIds) {
     for (auto* box : container->getContainedBoxes()) {
-        const auto boxAsContainer = enve_cast<ContainerBox*>(box);
-        qCDebug(lcSvgFlipbookTrack) << "collectFlipbookDescs: visiting box"
-                                    << box->prp_getName()
-                                    << "isContainer:" << (bool)boxAsContainer
-                                    << "childCount:" << (boxAsContainer ? boxAsContainer->getContainedBoxesCount() : -1)
-                                    << "descDocs:" << box->getDescYaml().count();
-        for (const auto& doc : box->getDescYaml()) {
-            qCDebug(lcSvgFlipbookTrack) << "collectFlipbookDescs: box" << box->prp_getName()
-                                        << "desc isYaml:" << doc.isYaml
-                                        << "content:" << doc.content;
-            if (!doc.isYaml) continue;
-            const QString ownerId = box->prp_getName();
-            try {
-                const auto node = YAML::Load(doc.content.toStdString());
-                if (!node["kind"] || node["kind"].as<std::string>() != "flipbook") continue;
-                // Owner still declares a flipbook desc, even if it fails to
-                // parse below: don't let a malformed map cause this track
-                // to be mistaken for a renamed-away/stale one.
-                liveOwnerIds.insert(ownerId);
-                if (!node["map"]) break;
-                QMap<int, QString> pageMap;
-                for (const auto& entry : node["map"])
-                    pageMap[entry.first.as<int>()] =
-                        QString::fromStdString(entry.second.as<std::string>());
-                if (pageMap.isEmpty()) break;
-                qCDebug(lcSvgFlipbookTrack) << "collectFlipbookDescs: resolved flipbook desc for"
-                                            << ownerId << "pages:" << pageMap;
-                SvgFlipbookTrack* existing = nullptr;
-                for (const auto& track : mFlipbookTracks) {
-                    if (track->prp_getName() == ownerId) { existing = track.get(); break; }
-                }
-                if (!existing) {
-                    auto track = enve::make_shared<SvgFlipbookTrack>(ownerId);
-                    wireFlipbookTrack(track);
-                    existing = track.get();
-                }
-                existing->setOwnerBox(enve_cast<ContainerBox*>(box));
-                existing->setPageMap(pageMap);
-                break;
-            } catch (const std::exception& e) {
-                qCWarning(lcSvgFlipbookTrack) << "collectFlipbookDescs: YAML parse failed for box"
-                                              << ownerId << ":" << e.what();
-            } catch (...) {
-                qCWarning(lcSvgFlipbookTrack) << "collectFlipbookDescs: unknown exception parsing"
-                                                  " desc for box" << ownerId;
-            }
-        }
+        applyFlipbookDescIfPresent(box, liveOwnerIds);
         if (const auto sub = enve_cast<ContainerBox*>(box))
             collectFlipbookDescs(sub, liveOwnerIds);
     }
 }
 
+void SvgLinkBox::applyPivotDescIfPresent(BoundingBox* box) {
+    qCDebug(lcSvgPivot) << "collectPivotDescs: visiting box"
+                        << box->prp_getName()
+                        << "svgElementId=" << box->property("svgElementId").toString()
+                        << "mCenterPivotPlanned=" << box->isCenterPivotPlanned()
+                        << "hasSvgPivotPos=" << box->property("svgPivotPos").isValid();
+    const QVariant pivotVar = box->property("svgPivotPos");
+    if (!pivotVar.isValid()) return;
+    const QPointF pivot = pivotVar.toPointF();
+    const QString boxName = box->prp_getName();
+    const QString svgId = box->property("svgElementId").toString();
+    qCDebug(lcSvgPivot) << "collectPivotDescs: found pivot" << pivot
+                        << "on box" << boxName << "svgId=" << svgId;
+    bool found = false;
+    for (const auto& track : mElementTracks) {
+        const QString tName = track->prp_getName();
+        if (tName == boxName || (!svgId.isEmpty() && tName == svgId)) {
+            found = true;
+            auto* target = track->resolvedTarget();
+            if (!target) {
+                qCDebug(lcSvgPivot) << "collectPivotDescs: track" << tName
+                                    << "has no resolved target";
+                break;
+            }
+            auto* transformAdv = enve_cast<AdvancedTransformAnimator*>(
+                target->getTransformAnimator());
+            if (!transformAdv) {
+                qCDebug(lcSvgPivot) << "collectPivotDescs: no AdvancedTransformAnimator on"
+                                    << tName;
+                break;
+            }
+            qCDebug(lcSvgPivot) << "collectPivotDescs: target=" << target->prp_getName()
+                                << "mCenterPivotPlanned=" << target->isCenterPivotPlanned()
+                                << "pivot before=" << transformAdv->getPivotAnimator()->getEffectiveValue();
+            target->cancelPlannedCenterPivot();
+            transformAdv->getPivotAnimator()->setBaseValue(pivot);
+            qCDebug(lcSvgPivot) << "collectPivotDescs: set pivot on" << tName
+                                << "=" << pivot
+                                << "pivot after=" << transformAdv->getPivotAnimator()->getEffectiveValue()
+                                << "mCenterPivotPlanned after cancel=" << target->isCenterPivotPlanned();
+            break;
+        }
+    }
+    if (!found) {
+        qCDebug(lcSvgPivot) << "collectPivotDescs: no element track found for"
+                            << boxName << "(svgId=" << svgId << ")";
+    }
+}
+
 void SvgLinkBox::collectPivotDescs(ContainerBox* container) {
     for (auto* box : container->getContainedBoxes()) {
-        qCDebug(lcSvgPivot) << "collectPivotDescs: visiting box"
-                            << box->prp_getName()
-                            << "svgElementId=" << box->property("svgElementId").toString()
-                            << "mCenterPivotPlanned=" << box->isCenterPivotPlanned()
-                            << "hasSvgPivotPos=" << box->property("svgPivotPos").isValid();
-        const QVariant pivotVar = box->property("svgPivotPos");
-        if (pivotVar.isValid()) {
-            const QPointF pivot = pivotVar.toPointF();
-            const QString boxName = box->prp_getName();
-            const QString svgId = box->property("svgElementId").toString();
-            qCDebug(lcSvgPivot) << "collectPivotDescs: found pivot" << pivot
-                                << "on box" << boxName << "svgId=" << svgId;
-            bool found = false;
-            for (const auto& track : mElementTracks) {
-                const QString tName = track->prp_getName();
-                if (tName == boxName || (!svgId.isEmpty() && tName == svgId)) {
-                    found = true;
-                    auto* target = track->resolvedTarget();
-                    if (!target) {
-                        qCDebug(lcSvgPivot) << "collectPivotDescs: track" << tName
-                                            << "has no resolved target";
-                        break;
-                    }
-                    auto* transformAdv = enve_cast<AdvancedTransformAnimator*>(
-                        target->getTransformAnimator());
-                    if (!transformAdv) {
-                        qCDebug(lcSvgPivot) << "collectPivotDescs: no AdvancedTransformAnimator on"
-                                            << tName;
-                        break;
-                    }
-                    qCDebug(lcSvgPivot) << "collectPivotDescs: target=" << target->prp_getName()
-                                        << "mCenterPivotPlanned=" << target->isCenterPivotPlanned()
-                                        << "pivot before=" << transformAdv->getPivotAnimator()->getEffectiveValue();
-                    target->cancelPlannedCenterPivot();
-                    transformAdv->getPivotAnimator()->setBaseValue(pivot);
-                    qCDebug(lcSvgPivot) << "collectPivotDescs: set pivot on" << tName
-                                        << "=" << pivot
-                                        << "pivot after=" << transformAdv->getPivotAnimator()->getEffectiveValue()
-                                        << "mCenterPivotPlanned after cancel=" << target->isCenterPivotPlanned();
-                    break;
-                }
-            }
-            if (!found) {
-                qCDebug(lcSvgPivot) << "collectPivotDescs: no element track found for"
-                                    << boxName << "(svgId=" << svgId << ")";
-            }
-        }
+        applyPivotDescIfPresent(box);
         if (const auto sub = enve_cast<ContainerBox*>(box))
             collectPivotDescs(sub);
     }
