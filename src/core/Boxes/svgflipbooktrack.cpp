@@ -112,6 +112,11 @@ void SvgFlipbookTrack::syncToTargets() {
             box->setVisibleFromAnimation(visible);
         }
     }
+    emit pageChanged();
+}
+
+int SvgFlipbookTrack::currentPageIndex() const {
+    return mIndex->getStepIntValue();
 }
 
 void SvgFlipbookTrack::writeTrack(eWriteStream& dst) const {
