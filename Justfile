@@ -36,6 +36,7 @@ cache-sdk:
     rm -f "{{SDK_CACHE_TAR}}"
     echo "Downloading SDK..."
     TMP=$(mktemp "{{SDK_CACHE_DIR}}/.tmp-XXXXXX")
+    trap 'rm -f "${TMP}"' EXIT
     curl -L -o "${TMP}" "{{SDK_URL}}"
     echo "Verifying SHA256..."
     echo "{{SDK_SHA256}}  ${TMP}" | shasum -a 256 --check
