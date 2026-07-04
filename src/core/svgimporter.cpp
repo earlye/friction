@@ -1115,9 +1115,16 @@ void loadElement(const QDomElement &element,
             const auto group = loadBoxesGroup(element, parentGroup,
                                               attributes, gradientCreator);
             if(group->getContainedBoxesCount() == 0) {
-                qCDebug(lcSvgImport) << "loadElement: pruning empty group"
-                                     << group->prp_getName()
-                                     << "descDocs:" << group->getDescYaml().count();
+                const int descCount = group->getDescYaml().count();
+                if(descCount > 0) {
+                    qCWarning(lcSvgImport) << "loadElement: pruning empty group"
+                                          << group->prp_getName() << "which had"
+                                          << descCount << "desc doc(s) attached"
+                                          << "— possible unintended data loss";
+                } else {
+                    qCDebug(lcSvgImport) << "loadElement: pruning empty group"
+                                         << group->prp_getName();
+                }
                 // cascadeIfParentEmptied=false: during import an ancestor
                 // group can be momentarily empty mid-loop (its other
                 // children not yet added), so the normal cascade-prune-

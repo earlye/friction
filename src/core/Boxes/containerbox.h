@@ -197,6 +197,12 @@ public:
     void updateContainedIds(const int firstId, const int lastId);
     int getContainedIndex(eBoxOrSound * const child);
     qsptr<eBoxOrSound> takeContained_k(const int id);
+    // cascadeIfEmptied: pass false only when this container may be
+    // momentarily/non-finally empty right now — e.g. mid-construction
+    // during import, where its other children haven't been added yet.
+    // Leaving this at the default true during any other loop-based bulk
+    // construction risks silently orphaning a still-under-construction
+    // container from the tree (issue 290e8ced0979).
     void removeContained_k(const qsptr<eBoxOrSound> &child,
                            const bool cascadeIfEmptied = true);
     void increaseContainedZInList(eBoxOrSound * const child);
