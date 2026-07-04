@@ -120,6 +120,10 @@ run-debug-1148748f4eb9:
 run-debug-4a539d16b258:
     QT_LOGGING_RULES="friction.svgfollower=true;friction.svgflipbooktrack=true" just run-debug > log.txt 2>&1;
 
+# Debug issue 66b971d67224: scale gizmo permanently locked at exactly 0 (multiplicative update)
+run-debug-66b971d67224:
+    QT_LOGGING_RULES="friction.animator=true" just run-debug > log.txt 2>&1;
+
 # Produce the universal DMG from the two arch builds
 package: build
     #!/usr/bin/env bash
