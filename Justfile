@@ -116,6 +116,10 @@ run-debug-locked-slider:
 run-debug-1148748f4eb9:
     QT_LOGGING_RULES="friction.svg.import=true;friction.svgflipbooktrack=true;friction.svgfollower=true;SvgElementTrack=true;friction.box.pivot=true;friction.svgpivot=true" just run-debug > log.txt 2>&1;
 
+# Debug issue 4a539d16b258: kind: flipbook-follower binding resolution and per-frame page-index sync
+run-debug-4a539d16b258:
+    QT_LOGGING_RULES="friction.svgfollower=true;friction.svgflipbooktrack=true" just run-debug > log.txt 2>&1;
+
 # Produce the universal DMG from the two arch builds
 package: build
     #!/usr/bin/env bash
