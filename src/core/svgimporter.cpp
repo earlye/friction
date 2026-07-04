@@ -1361,7 +1361,7 @@ void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
 
         case 'd':
             if(name == "display") {
-                if(value == "none") mHidden = true;
+                if(value.trimmed() == "none") mHidden = true;
             }
             break;
 
@@ -1483,7 +1483,7 @@ void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
             if(name == "vector-effect") {
                 //vectorEffect = value;
             } else if(name == "visibility") {
-                if(value == "hidden") mHidden = true;
+                if(value.trimmed() == "hidden") mHidden = true;
             }
             break;
 
@@ -1521,6 +1521,9 @@ void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
 
     const QString strokeOp = element.attribute("stroke-opacity");
     if(!strokeOp.isEmpty()) mFillAttributes.setColorOpacity(toDouble(strokeOp));
+
+    if(element.attribute("display").trimmed() == "none") mHidden = true;
+    if(element.attribute("visibility").trimmed() == "hidden") mHidden = true;
 
     const QString strokeWidth = element.attribute("stroke-width").simplified();
     if (mStrokeAttributes.getPaintType() != NOPAINT) {
