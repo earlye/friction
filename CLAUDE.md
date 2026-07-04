@@ -9,6 +9,21 @@ Use `just build-debug` when iterating on code changes. Use `just build-mac-arm` 
 
 Please keep earlye-fork.md updated as new features are built and introduced.
 
+## Starting Work on an Issue
+
+- The first thing to do when starting work on an issue is add a
+  `just run-debug-{issue-id}` recipe to the `justfile` (see the
+  existing `run-debug-*` recipes for examples), enabling whatever
+  `QT_LOGGING_RULES` categories are relevant to the issue. This gives
+  the user an easy way to manually reproduce and test the issue
+  throughout the session, and keeps a record of which log categories
+  were relevant.
+- `{issue-id}` is the short id used in the issue's filename and branch
+  name (e.g. `issues/issue-<uuid7>-{issue-id}-slug.md` and branch
+  `issues/{issue-id}`).
+- Keep the recipe up to date as tracing needs change during
+  investigation.
+
 ## Pull Requests
 
 - Always create PRs against the fork (`earlye/friction`), never against the upstream (`friction2d/friction`).
