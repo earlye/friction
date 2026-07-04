@@ -3,6 +3,8 @@ SDK_REV     := "r5"
 SDK_TAR     := "friction-sdk-" + SDK_VERSION + SDK_REV + "-macOS.tar.xz"
 SDK_URL     := "https://github.com/friction2d/friction-sdk/releases/download/v" + SDK_VERSION + "/" + SDK_TAR
 SDK_SHA256  := "36a30cb68862d3cd0fe39f9c283f1a9fb9cf2ea01a9dfc65c85024b0c2171d2d"
+SDK_CACHE_DIR := env_var('HOME') + "/.cache/friction-sdk"
+SDK_CACHE_TAR := env_var('HOME') + "/.cache/friction-sdk/friction-sdk-" + SDK_VERSION + SDK_REV + "-macOS." + SDK_SHA256 + ".tar.xz"
 
 default:
    @just --list
@@ -17,24 +19,41 @@ deps:
     fi
     brew install cmake ninja python pkg-config universal-ctags
 
-# Download and SHA256-verify the SDK tarball into ./sdk/, skipping if already present
-sdk:
+# Ensure the checksum-verified SDK tarball exists in the shared cache (~/.cache/friction-sdk/), downloading on miss or corruption
+cache-sdk:
+    #!/usr/bin/env bash
+    set -e
+    mkdir -p "{{SDK_CACHE_DIR}}"
+    OTHER=$(find "{{SDK_CACHE_DIR}}" -type f ! -name "$(basename "{{SDK_CACHE_TAR}}")" ! -name ".tmp-*")
+    if [ -n "$OTHER" ]; then
+        echo "Note: other SDK tarballs found in {{SDK_CACHE_DIR}} (not the version currently needed) — consider cleaning up if no longer needed:"
+        echo "$OTHER"
+    fi
+    if [ -f "{{SDK_CACHE_TAR}}" ] && echo "{{SDK_SHA256}}  {{SDK_CACHE_TAR}}" | shasum -a 256 --check --status; then
+        echo "SDK tarball already cached and verified."
+        exit 0
+    fi
+    rm -f "{{SDK_CACHE_TAR}}"
+    echo "Downloading SDK..."
+    TMP=$(mktemp "{{SDK_CACHE_DIR}}/.tmp-XXXXXX")
+    curl -L -o "${TMP}" "{{SDK_URL}}"
+    echo "Verifying SHA256..."
+    echo "{{SDK_SHA256}}  ${TMP}" | shasum -a 256 --check
+    mv "${TMP}" "{{SDK_CACHE_TAR}}"
+
+# Extract the cached SDK tarball into ./sdk/, skipping if already present
+unpack-sdk: cache-sdk
     #!/usr/bin/env bash
     set -e
     if [ -d "sdk" ]; then
-        echo "SDK already present, skipping download."
+        echo "SDK already present, skipping extraction."
         exit 0
     fi
-    echo "Downloading SDK..."
-    curl -L -o "{{SDK_TAR}}" "{{SDK_URL}}"
-    echo "Verifying SHA256..."
-    echo "{{SDK_SHA256}}  {{SDK_TAR}}" | shasum -a 256 --check
     echo "Extracting SDK..."
-    tar xf "{{SDK_TAR}}"
-    rm "{{SDK_TAR}}"
+    tar xf "{{SDK_CACHE_TAR}}"
 
 # Build for arm64 (native) and x86_64, after updating submodules
-build-mac: sdk
+build-mac: unpack-sdk
     git submodule update --init --recursive
     just build-mac-arm
     just build-mac-x86_64
@@ -42,7 +61,7 @@ build-mac: sdk
 build-mac-x86_64:
     arch -x86_64 ./src/scripts/build_mac.sh
 
-build-mac-arm: sdk
+build-mac-arm: unpack-sdk
     ./src/scripts/build_mac.sh
 
 build: build-mac-arm
@@ -146,7 +165,7 @@ package: build
 all: deps build package
 
 # Build debug for native arm64 only (incremental; no DMG)
-build-debug: sdk
+build-debug: unpack-sdk
     #!/usr/bin/env bash
     set -e -x
     CWD=$(pwd)
