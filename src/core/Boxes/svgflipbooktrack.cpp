@@ -112,6 +112,7 @@ void SvgFlipbookTrack::syncToTargets() {
             box->setVisibleFromAnimation(visible);
         }
     }
+    emit pageChanged();
 }
 
 int SvgFlipbookTrack::currentPageIndex() const {

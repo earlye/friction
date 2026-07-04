@@ -60,6 +60,7 @@ public:
 
 signals:
     void deleteRequested();
+    void pageChanged();
 
 private:
     bool mOrphaned = true;

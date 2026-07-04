@@ -492,6 +492,15 @@ void SvgLinkBox::wireFlipbookTrack(const qsptr<SvgFlipbookTrack>& track) {
     track->setParent(this);
     connect(track.get(), &SvgFlipbookTrack::deleteRequested,
             this, [this, t = track.get()]() { removeFlipbookTrack(t); });
+    connect(track.get(), &SvgFlipbookTrack::pageChanged,
+            this, [this, t = track.get()]() {
+                for (const auto& binding : mFlipbookFollowers) {
+                    if (binding.controllerTrack == t) {
+                        applyFlipbookFollower(binding.controllerTrack, binding.follower,
+                                              binding.resolvedPages);
+                    }
+                }
+            });
     const int swtId = ca_getNumberOfChildren()
                       + mElementTracks.count()
                       + mFlipbookTracks.count() - 1;
