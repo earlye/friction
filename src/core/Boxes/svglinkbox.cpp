@@ -26,6 +26,7 @@
 #include "svglinkbox.h"
 
 #include "canvas.h"
+#include "exceptions.h"
 #include "fileshandler.h"
 #include "svgimporter.h"
 #include "Animators/gradient.h"
@@ -76,32 +77,61 @@ void SvgLinkBox::updateContent() {
     mGradients.clear();
     const auto obj = fileHandler();
     QString contentName;
+    qsptr<BoundingBox> imported;
     if(obj) {
         const auto gradientCreator = [this]() {
             const auto grad = enve::make_shared<Gradient>();
             mGradients << grad;
             return grad.get();
         };
-        const auto imported = ImportSVG::loadSVGFile(obj->path(), gradientCreator);
-        if(imported) {
-            contentName = imported->prp_getName();
-            addContained(imported);
+        try {
+            imported = ImportSVG::loadSVGFile(obj->path(), gradientCreator);
+        } catch(const std::exception& e) {
+            gPrintExceptionCritical(e);
         }
+        if(imported) contentName = imported->prp_getName();
     }
+    // Sync this box's own name before the content is inserted below it —
+    // otherwise the content (e.g. "Ruby") would already be a descendant
+    // sharing the candidate name, forcing a spurious "Ruby 0" every time.
     syncAutoName(contentName);
+    if(imported) addContained(imported);
     resolveElementTracks();
 }
 
 void SvgLinkBox::syncAutoName(const QString& contentName) {
     const QString base = contentName.isEmpty() ? QStringLiteral("Empty Link") : contentName;
     const auto parentScene = getParentScene();
-    mAutoName = parentScene ?
-                parentScene->makeNameUniqueForDescendants(base, this) : base;
-    if(mManualName.isEmpty()) prp_setName(mAutoName);
+    ContainerBox* const nameCtxt = parentScene ?
+                static_cast<ContainerBox*>(parentScene) : this;
+    mAutoName = nameCtxt->makeNameUniqueForDescendants(base, this);
+    if(mMigrateLegacyName) {
+        // Files saved before the auto/manual name split never recorded
+        // intent — only a name. Treat anything but the untouched default
+        // as a deliberate rename so upgrading never silently discards a
+        // name the user chose.
+        mMigrateLegacyName = false;
+        const QString restoredName = prp_getName();
+        if(restoredName != QStringLiteral("Empty Link")) mManualName = restoredName;
+    }
+    if(mManualName.isEmpty()) {
+        prp_setName(mAutoName);
+    } else if(mManualName != prp_getName()) {
+        // The displayed name can drift from mManualName via a non-action
+        // rename (e.g. ContainerBox::insertContained's collision fix-up).
+        // Absorb it so a stale value doesn't linger for "reset to auto".
+        mManualName = prp_getName();
+    }
 }
 
 void SvgLinkBox::prp_setNameAction(const QString &newName) {
+    if(newName == prp_getName()) return;
+    const QString oldManualName = mManualName;
     mManualName = newName;
+    UndoRedo ur;
+    ur.fUndo = [this, oldManualName]() { mManualName = oldManualName; };
+    ur.fRedo = [this, newName]() { mManualName = newName; };
+    prp_addUndoRedo(ur);
     SvgLinkBoxBase::prp_setNameAction(newName);
 }
 
@@ -621,6 +651,8 @@ void SvgLinkBox::readBoundingBox(eReadStream& src) {
     }
     if (src.evFileVersion() >= EvFormat::svgLinkManualName) {
         src >> mManualName;
+    } else {
+        mMigrateLegacyName = true;
     }
     SvgLinkBoxBase::readBoundingBox(src);
 }
@@ -663,9 +695,10 @@ void SvgLinkBox::prp_setupTreeViewMenu(PropertyMenu* menu) {
 
 QDomElement SvgLinkBox::prp_writePropertyXEV_impl(const XevExporter& exp) const {
     auto result = SvgLinkBoxBase::prp_writePropertyXEV_impl(exp);
-    if (!mManualName.isEmpty()) {
-        result.setAttribute("manualName", mManualName);
-    }
+    // Written unconditionally (even when empty) so its mere presence lets
+    // prp_readPropertyXEV_impl tell "saved by name-aware code, genuinely
+    // auto" apart from "legacy file, name field is just whatever was set".
+    result.setAttribute("manualName", mManualName);
     if (!mElementTracks.isEmpty()) {
         auto tracksEle = exp.createElement("ElementTracks");
         for (const auto& track : mElementTracks) {
@@ -689,7 +722,11 @@ QDomElement SvgLinkBox::prp_writePropertyXEV_impl(const XevExporter& exp) const 
 
 void SvgLinkBox::prp_readPropertyXEV_impl(const QDomElement& ele,
                                            const XevImporter& imp) {
-    mManualName = ele.attribute("manualName");
+    if (ele.hasAttribute("manualName")) {
+        mManualName = ele.attribute("manualName");
+    } else {
+        mMigrateLegacyName = true;
+    }
     const auto tracksEle = ele.firstChildElement("ElementTracks");
     if (!tracksEle.isNull()) {
         auto trackEle = tracksEle.firstChildElement("Track");

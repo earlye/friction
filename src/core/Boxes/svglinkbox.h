@@ -92,6 +92,7 @@ private:
 
     QString mAutoName;
     QString mManualName;
+    bool mMigrateLegacyName = false;
 
     QList<qsptr<Gradient>> mGradients;
     QList<qsptr<SvgElementTrack>> mElementTracks;
