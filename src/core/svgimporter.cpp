@@ -197,6 +197,13 @@ protected:
     FillSvgAttributes mFillAttributes;
     StrokeSvgAttributes mStrokeAttributes;
     TextSvgAttributes mTextAttributes;
+
+    // once set by an ancestor's display:none, stays set: a child's own
+    // display:inline can't undo an ancestor being removed from the render
+    // tree. visibility:hidden is treated the same way for simplicity, even
+    // though CSS lets a descendant's visibility:visible override it —
+    // that override isn't supported here.
+    bool mHidden = false;
 };
 
 class PathAnimator;
@@ -1258,6 +1265,7 @@ void BoxSvgAttributes::setParent(const BoxSvgAttributes &parent) {
     mStrokeAttributes = parent.getStrokeAttributes();
     mTextAttributes = parent.getTextAttributes();
     mFillRule = parent.getFillRule();
+    mHidden = parent.mHidden;
 }
 
 SkPathFillType BoxSvgAttributes::getFillRule() const {
@@ -1355,7 +1363,7 @@ void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
 
         case 'd':
             if(name == "display") {
-                //display = value;
+                if(value.trimmed() == "none") mHidden = true;
             }
             break;
 
@@ -1477,7 +1485,7 @@ void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
             if(name == "vector-effect") {
                 //vectorEffect = value;
             } else if(name == "visibility") {
-                //visibility = value;
+                if(value.trimmed() == "hidden") mHidden = true;
             }
             break;
 
@@ -1515,6 +1523,9 @@ void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
 
     const QString strokeOp = element.attribute("stroke-opacity");
     if(!strokeOp.isEmpty()) mFillAttributes.setColorOpacity(toDouble(strokeOp));
+
+    if(element.attribute("display").trimmed() == "none") mHidden = true;
+    if(element.attribute("visibility").trimmed() == "hidden") mHidden = true;
 
     const QString strokeWidth = element.attribute("stroke-width").simplified();
     if (mStrokeAttributes.getPaintType() != NOPAINT) {
@@ -1648,6 +1659,8 @@ void StrokeSvgAttributes::apply(BoundingBox *box, const qreal scale) const {
 
 void BoxSvgAttributes::apply(BoundingBox *box) const
 {
+    if (mHidden) { box->setVisibleFromAnimation(false); }
+
     if (!mLabel.isEmpty()) {
         box->prp_setName(mLabel);
         box->setProperty("svgInkscapeLabel", mLabel);

@@ -305,6 +305,7 @@ before the fork.
 | # | Fix | Origin |
 |---|-----|--------|
 | [#66](https://github.com/earlye/friction/pull/66) | Fix SVG stroke-width import: style-parsed widths were reset when the direct attribute was absent; element transform scale was double-applied (once at import, once at render) | pre-existing — bugs were in upstream `BoxSvgAttributes::loadBoundingBoxAttributes` |
+| [#82](https://github.com/earlye/friction/pull/82) | Fix SVG import/link silently ignoring `display:none`/`visibility:hidden`: values were parsed but discarded as no-ops, so hidden groups/layers (including nested Inkscape layers) always rendered visible | pre-existing — bug was in upstream `BoxSvgAttributes::loadBoundingBoxAttributes` |
 
 ### Compiler Warnings
 
