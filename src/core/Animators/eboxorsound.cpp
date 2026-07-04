@@ -56,9 +56,9 @@ void eBoxOrSound::setParentGroup(ContainerBox * const parent) {
     emit parentChanged(parent);
 }
 
-void eBoxOrSound::removeFromParent_k() {
+void eBoxOrSound::removeFromParent_k(const bool cascadeIfParentEmptied) {
     if(!mParentGroup) return;
-    mParentGroup->removeContained_k(ref<eBoxOrSound>());
+    mParentGroup->removeContained_k(ref<eBoxOrSound>(), cascadeIfParentEmptied);
 }
 
 bool eBoxOrSound::isAncestor(const BoundingBox * const box) const {
