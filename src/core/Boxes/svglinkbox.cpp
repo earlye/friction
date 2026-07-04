@@ -173,6 +173,12 @@ void SvgLinkBox::resolveElementTracks() {
         }
     }
     for (auto* track : flipbookTracksToRemove) removeFlipbookTrack(track);
+    // Clear before resolving targets: syncToTargets() below emits pageChanged(),
+    // which re-applies mFlipbookFollowers synchronously — those bindings still
+    // point into the SVG subtree updateContent() already tore down, so they
+    // must not be dereferenced until collectFlipbookFollowerDescs rebuilds them
+    // against the freshly imported tree.
+    mFlipbookFollowers.clear();
     for (const auto& track : mFlipbookTracks) {
         if (!liveFlipbookOwners.contains(track->prp_getName())) continue;
         track->resolveTargets(svgRoot);
@@ -180,7 +186,6 @@ void SvgLinkBox::resolveElementTracks() {
     }
     mFollowers.clear();
     if (svgRoot) collectFollowerDescs(svgRoot, svgRoot);
-    mFlipbookFollowers.clear();
     if (svgRoot) collectFlipbookFollowerDescs(svgRoot, svgRoot);
     for (const auto& binding : mFlipbookFollowers) {
         applyFlipbookFollower(binding.controllerTrack, binding.follower, binding.resolvedPages);
