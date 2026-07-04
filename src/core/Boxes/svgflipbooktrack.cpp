@@ -114,6 +114,10 @@ void SvgFlipbookTrack::syncToTargets() {
     }
 }
 
+int SvgFlipbookTrack::currentPageIndex() const {
+    return mIndex->getStepIntValue();
+}
+
 void SvgFlipbookTrack::writeTrack(eWriteStream& dst) const {
     dst << prp_getName();
     mIndex->prp_writeProperty(dst);

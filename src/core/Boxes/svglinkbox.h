@@ -81,11 +81,19 @@ private:
         BoundingBox* controller;
     };
 
+    struct FlipbookFollowerBinding {
+        BoundingBox* follower;
+        SvgFlipbookTrack* controllerTrack;
+        QMap<int, BoundingBox*> resolvedPages;
+    };
+
     QList<qsptr<Gradient>> mGradients;
     QList<qsptr<SvgElementTrack>> mElementTracks;
     QList<qsptr<SvgFlipbookTrack>> mFlipbookTracks;
     QList<FollowerBinding> mFollowers;
+    QList<FlipbookFollowerBinding> mFlipbookFollowers;
     void collectFollowerDescs(ContainerBox* svgRoot, ContainerBox* container);
+    void collectFlipbookFollowerDescs(ContainerBox* svgRoot, ContainerBox* container);
 };
 
 #endif // SVGLINKBOX_H

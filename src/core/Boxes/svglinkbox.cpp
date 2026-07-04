@@ -176,6 +176,8 @@ void SvgLinkBox::resolveElementTracks() {
     }
     mFollowers.clear();
     if (svgRoot) collectFollowerDescs(svgRoot, svgRoot);
+    mFlipbookFollowers.clear();
+    if (svgRoot) collectFlipbookFollowerDescs(svgRoot, svgRoot);
 }
 
 static BoundingBox* findBoxByName(ContainerBox* container, const QString& name) {
@@ -261,6 +263,65 @@ void SvgLinkBox::collectFollowerDescs(ContainerBox* svgRoot,
         }
         if (const auto sub = enve_cast<ContainerBox*>(box))
             collectFollowerDescs(svgRoot, sub);
+    }
+}
+
+static void applyFlipbookFollower(SvgFlipbookTrack* controllerTrack,
+                                   BoundingBox* follower,
+                                   const QMap<int, BoundingBox*>& resolvedPages) {
+    const int idx = controllerTrack->currentPageIndex();
+    qCDebug(lcSvgFollower) << "applyFlipbookFollower controller:" << controllerTrack->prp_getName()
+                           << "-> follower:" << follower->prp_getName()
+                           << "index:" << idx;
+    for (auto it = resolvedPages.begin(); it != resolvedPages.end(); ++it) {
+        if (BoundingBox* box = it.value()) box->setVisibleFromAnimation(it.key() == idx);
+    }
+}
+
+void SvgLinkBox::collectFlipbookFollowerDescs(ContainerBox* svgRoot,
+                                               ContainerBox* container) {
+    for (auto* box : container->getContainedBoxes()) {
+        for (const auto& doc : box->getDescYaml()) {
+            if (!doc.isYaml) continue;
+            try {
+                const auto node = YAML::Load(doc.content.toStdString());
+                if (!node["kind"] || node["kind"].as<std::string>() != "flipbook-follower") continue;
+                if (!node["controller"] || !node["map"]) break;
+                const QString controllerName =
+                    QString::fromStdString(node["controller"].as<std::string>());
+                SvgFlipbookTrack* controllerTrack = nullptr;
+                for (const auto& track : mFlipbookTracks) {
+                    if (track->prp_getName() == controllerName) { controllerTrack = track.get(); break; }
+                }
+                if (!controllerTrack) {
+                    qCWarning(lcSvgFollower) << "flipbook-follower" << box->prp_getName()
+                                            << "controller not found:" << controllerName;
+                    break;
+                }
+                QMap<int, BoundingBox*> resolvedPages;
+                for (const auto& entry : node["map"]) {
+                    const int page = entry.first.as<int>();
+                    if (entry.second.IsNull()) continue;
+                    const QString childName =
+                        QString::fromStdString(entry.second.as<std::string>());
+                    if (childName.isEmpty()) continue;
+                    BoundingBox* child = findBoxByName(svgRoot, childName);
+                    if (child) {
+                        resolvedPages[page] = child;
+                    } else {
+                        qCWarning(lcSvgFollower) << "flipbook-follower" << box->prp_getName()
+                                                << "page" << page << "child not found:" << childName;
+                    }
+                }
+                qCDebug(lcSvgFollower) << "flipbook-follower" << box->prp_getName()
+                                      << "-> controller" << controllerName
+                                      << "pages:" << resolvedPages.keys();
+                mFlipbookFollowers.append(FlipbookFollowerBinding{box, controllerTrack, resolvedPages});
+                break;
+            } catch (...) {}
+        }
+        if (const auto sub = enve_cast<ContainerBox*>(box))
+            collectFlipbookFollowerDescs(svgRoot, sub);
     }
 }
 
@@ -450,6 +511,9 @@ void SvgLinkBox::anim_setAbsFrame(const int frame) {
     for (const auto& track : mFlipbookTracks) {
         track->anim_setAbsFrame(frame);
         track->syncToTargets();
+    }
+    for (const auto& binding : mFlipbookFollowers) {
+        applyFlipbookFollower(binding.controllerTrack, binding.follower, binding.resolvedPages);
     }
     for (const auto& binding : mFollowers) {
         qCDebug(lcSvgFollower) << "anim_setAbsFrame" << frame

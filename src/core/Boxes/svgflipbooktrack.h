@@ -47,6 +47,7 @@ public:
 
     void resolveTargets(ContainerBox* svgRoot);
     void syncToTargets();
+    int currentPageIndex() const;
 
     void writeTrack(eWriteStream& dst) const;
     void readTrack(eReadStream& src);
