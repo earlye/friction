@@ -86,6 +86,10 @@ void SvgLinkBox::updateContent() {
     resolveElementTracks();
 }
 
+static void applyFlipbookFollower(SvgFlipbookTrack* controllerTrack,
+                                   BoundingBox* follower,
+                                   const QMap<int, BoundingBox*>& resolvedPages);
+
 static void collectAnimationNodes(BoundingBox* box,
                                    QList<BoundingBox*>& result) {
     for (const auto& doc : box->getDescYaml()) {
@@ -178,6 +182,9 @@ void SvgLinkBox::resolveElementTracks() {
     if (svgRoot) collectFollowerDescs(svgRoot, svgRoot);
     mFlipbookFollowers.clear();
     if (svgRoot) collectFlipbookFollowerDescs(svgRoot, svgRoot);
+    for (const auto& binding : mFlipbookFollowers) {
+        applyFlipbookFollower(binding.controllerTrack, binding.follower, binding.resolvedPages);
+    }
 }
 
 static BoundingBox* findBoxByName(ContainerBox* container, const QString& name) {
@@ -318,7 +325,13 @@ void SvgLinkBox::collectFlipbookFollowerDescs(ContainerBox* svgRoot,
                                       << "pages:" << resolvedPages.keys();
                 mFlipbookFollowers.append(FlipbookFollowerBinding{box, controllerTrack, resolvedPages});
                 break;
-            } catch (...) {}
+            } catch (const std::exception& e) {
+                qCWarning(lcSvgFollower) << "flipbook-follower: YAML parse failed for box"
+                                        << box->prp_getName() << ":" << e.what();
+            } catch (...) {
+                qCWarning(lcSvgFollower) << "flipbook-follower: unknown exception parsing"
+                                            " desc for box" << box->prp_getName();
+            }
         }
         if (const auto sub = enve_cast<ContainerBox*>(box))
             collectFlipbookFollowerDescs(svgRoot, sub);
@@ -490,6 +503,10 @@ void SvgLinkBox::removeFlipbookTrack(SvgFlipbookTrack* track) {
         if (mFlipbookTracks[i].get() == track) {
             SWT_removeChild(track);
             mFlipbookTracks.removeAt(i);
+            for (int j = mFlipbookFollowers.count() - 1; j >= 0; j--) {
+                if (mFlipbookFollowers[j].controllerTrack == track)
+                    mFlipbookFollowers.removeAt(j);
+            }
             return;
         }
     }
