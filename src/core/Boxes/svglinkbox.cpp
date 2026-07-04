@@ -25,6 +25,7 @@
 
 #include "svglinkbox.h"
 
+#include "canvas.h"
 #include "fileshandler.h"
 #include "svgimporter.h"
 #include "Animators/gradient.h"
@@ -74,6 +75,7 @@ void SvgLinkBox::updateContent() {
     removeAllContained();
     mGradients.clear();
     const auto obj = fileHandler();
+    QString contentName;
     if(obj) {
         const auto gradientCreator = [this]() {
             const auto grad = enve::make_shared<Gradient>();
@@ -81,9 +83,26 @@ void SvgLinkBox::updateContent() {
             return grad.get();
         };
         const auto imported = ImportSVG::loadSVGFile(obj->path(), gradientCreator);
-        if(imported) addContained(imported);
+        if(imported) {
+            contentName = imported->prp_getName();
+            addContained(imported);
+        }
     }
+    syncAutoName(contentName);
     resolveElementTracks();
+}
+
+void SvgLinkBox::syncAutoName(const QString& contentName) {
+    const QString base = contentName.isEmpty() ? QStringLiteral("Empty Link") : contentName;
+    const auto parentScene = getParentScene();
+    mAutoName = parentScene ?
+                parentScene->makeNameUniqueForDescendants(base, this) : base;
+    if(mManualName.isEmpty()) prp_setName(mAutoName);
+}
+
+void SvgLinkBox::prp_setNameAction(const QString &newName) {
+    mManualName = newName;
+    SvgLinkBoxBase::prp_setNameAction(newName);
 }
 
 static void applyFlipbookFollower(SvgFlipbookTrack* controllerTrack,
@@ -573,6 +592,7 @@ void SvgLinkBox::writeBoundingBox(eWriteStream& dst) const {
     for (const auto& track : mFlipbookTracks) {
         track->writeTrack(dst);
     }
+    dst << mManualName;
     SvgLinkBoxBase::writeBoundingBox(dst);
 }
 
@@ -598,6 +618,9 @@ void SvgLinkBox::readBoundingBox(eReadStream& src) {
             track->readTrack(src);
             wireFlipbookTrack(track);
         }
+    }
+    if (src.evFileVersion() >= EvFormat::svgLinkManualName) {
+        src >> mManualName;
     }
     SvgLinkBoxBase::readBoundingBox(src);
 }
@@ -640,6 +663,9 @@ void SvgLinkBox::prp_setupTreeViewMenu(PropertyMenu* menu) {
 
 QDomElement SvgLinkBox::prp_writePropertyXEV_impl(const XevExporter& exp) const {
     auto result = SvgLinkBoxBase::prp_writePropertyXEV_impl(exp);
+    if (!mManualName.isEmpty()) {
+        result.setAttribute("manualName", mManualName);
+    }
     if (!mElementTracks.isEmpty()) {
         auto tracksEle = exp.createElement("ElementTracks");
         for (const auto& track : mElementTracks) {
@@ -663,6 +689,7 @@ QDomElement SvgLinkBox::prp_writePropertyXEV_impl(const XevExporter& exp) const 
 
 void SvgLinkBox::prp_readPropertyXEV_impl(const QDomElement& ele,
                                            const XevImporter& imp) {
+    mManualName = ele.attribute("manualName");
     const auto tracksEle = ele.firstChildElement("ElementTracks");
     if (!tracksEle.isNull()) {
         auto trackEle = tracksEle.firstChildElement("Track");

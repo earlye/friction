@@ -120,6 +120,10 @@ run-debug-1148748f4eb9:
 run-debug-4a539d16b258:
     QT_LOGGING_RULES="friction.svgfollower=true;friction.svgflipbooktrack=true" just run-debug > log.txt 2>&1;
 
+# Debug issue 57a4e9a8842e: delete-then-relink of an SvgLinkBox shows "Empty Link" instead of imported content
+run-debug-57a4e9a8842e:
+    QT_LOGGING_RULES="friction.svg.import=true;friction.containerbox.insert=true;SvgElementTrack=true" just run-debug > log.txt 2>&1;
+
 # Produce the universal DMG from the two arch builds
 package: build
     #!/usr/bin/env bash
