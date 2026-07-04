@@ -154,6 +154,7 @@ void SvgLinkBox::resolveElementTracks() {
         if (!exists) addElementTrack(name);
     }
     QSet<QString> liveFlipbookOwners;
+    applyFlipbookDescIfPresent(svgRoot, liveFlipbookOwners);
     collectFlipbookDescs(svgRoot, liveFlipbookOwners);
     applyPivotDescIfPresent(svgRoot);
     collectPivotDescs(svgRoot);
@@ -263,56 +264,61 @@ void SvgLinkBox::collectFollowerDescs(ContainerBox* svgRoot,
     }
 }
 
+void SvgLinkBox::applyFlipbookDescIfPresent(BoundingBox* box,
+                                             QSet<QString>& liveOwnerIds) {
+    const auto boxAsContainer = enve_cast<ContainerBox*>(box);
+    qCDebug(lcSvgFlipbookTrack) << "collectFlipbookDescs: visiting box"
+                                << box->prp_getName()
+                                << "isContainer:" << (bool)boxAsContainer
+                                << "childCount:" << (boxAsContainer ? boxAsContainer->getContainedBoxesCount() : -1)
+                                << "descDocs:" << box->getDescYaml().count();
+    for (const auto& doc : box->getDescYaml()) {
+        qCDebug(lcSvgFlipbookTrack) << "collectFlipbookDescs: box" << box->prp_getName()
+                                    << "desc isYaml:" << doc.isYaml
+                                    << "content:" << doc.content;
+        if (!doc.isYaml) continue;
+        const QString ownerId = box->prp_getName();
+        try {
+            const auto node = YAML::Load(doc.content.toStdString());
+            if (!node["kind"] || node["kind"].as<std::string>() != "flipbook") continue;
+            // Owner still declares a flipbook desc, even if it fails to
+            // parse below: don't let a malformed map cause this track
+            // to be mistaken for a renamed-away/stale one.
+            liveOwnerIds.insert(ownerId);
+            if (!node["map"]) break;
+            QMap<int, QString> pageMap;
+            for (const auto& entry : node["map"])
+                pageMap[entry.first.as<int>()] =
+                    QString::fromStdString(entry.second.as<std::string>());
+            if (pageMap.isEmpty()) break;
+            qCDebug(lcSvgFlipbookTrack) << "collectFlipbookDescs: resolved flipbook desc for"
+                                        << ownerId << "pages:" << pageMap;
+            SvgFlipbookTrack* existing = nullptr;
+            for (const auto& track : mFlipbookTracks) {
+                if (track->prp_getName() == ownerId) { existing = track.get(); break; }
+            }
+            if (!existing) {
+                auto track = enve::make_shared<SvgFlipbookTrack>(ownerId);
+                wireFlipbookTrack(track);
+                existing = track.get();
+            }
+            existing->setOwnerBox(enve_cast<ContainerBox*>(box));
+            existing->setPageMap(pageMap);
+            break;
+        } catch (const std::exception& e) {
+            qCWarning(lcSvgFlipbookTrack) << "collectFlipbookDescs: YAML parse failed for box"
+                                          << ownerId << ":" << e.what();
+        } catch (...) {
+            qCWarning(lcSvgFlipbookTrack) << "collectFlipbookDescs: unknown exception parsing"
+                                              " desc for box" << ownerId;
+        }
+    }
+}
+
 void SvgLinkBox::collectFlipbookDescs(ContainerBox* container,
                                        QSet<QString>& liveOwnerIds) {
     for (auto* box : container->getContainedBoxes()) {
-        const auto boxAsContainer = enve_cast<ContainerBox*>(box);
-        qCDebug(lcSvgFlipbookTrack) << "collectFlipbookDescs: visiting box"
-                                    << box->prp_getName()
-                                    << "isContainer:" << (bool)boxAsContainer
-                                    << "childCount:" << (boxAsContainer ? boxAsContainer->getContainedBoxesCount() : -1)
-                                    << "descDocs:" << box->getDescYaml().count();
-        for (const auto& doc : box->getDescYaml()) {
-            qCDebug(lcSvgFlipbookTrack) << "collectFlipbookDescs: box" << box->prp_getName()
-                                        << "desc isYaml:" << doc.isYaml
-                                        << "content:" << doc.content;
-            if (!doc.isYaml) continue;
-            const QString ownerId = box->prp_getName();
-            try {
-                const auto node = YAML::Load(doc.content.toStdString());
-                if (!node["kind"] || node["kind"].as<std::string>() != "flipbook") continue;
-                // Owner still declares a flipbook desc, even if it fails to
-                // parse below: don't let a malformed map cause this track
-                // to be mistaken for a renamed-away/stale one.
-                liveOwnerIds.insert(ownerId);
-                if (!node["map"]) break;
-                QMap<int, QString> pageMap;
-                for (const auto& entry : node["map"])
-                    pageMap[entry.first.as<int>()] =
-                        QString::fromStdString(entry.second.as<std::string>());
-                if (pageMap.isEmpty()) break;
-                qCDebug(lcSvgFlipbookTrack) << "collectFlipbookDescs: resolved flipbook desc for"
-                                            << ownerId << "pages:" << pageMap;
-                SvgFlipbookTrack* existing = nullptr;
-                for (const auto& track : mFlipbookTracks) {
-                    if (track->prp_getName() == ownerId) { existing = track.get(); break; }
-                }
-                if (!existing) {
-                    auto track = enve::make_shared<SvgFlipbookTrack>(ownerId);
-                    wireFlipbookTrack(track);
-                    existing = track.get();
-                }
-                existing->setOwnerBox(enve_cast<ContainerBox*>(box));
-                existing->setPageMap(pageMap);
-                break;
-            } catch (const std::exception& e) {
-                qCWarning(lcSvgFlipbookTrack) << "collectFlipbookDescs: YAML parse failed for box"
-                                              << ownerId << ":" << e.what();
-            } catch (...) {
-                qCWarning(lcSvgFlipbookTrack) << "collectFlipbookDescs: unknown exception parsing"
-                                                  " desc for box" << ownerId;
-            }
-        }
+        applyFlipbookDescIfPresent(box, liveOwnerIds);
         if (const auto sub = enve_cast<ContainerBox*>(box))
             collectFlipbookDescs(sub, liveOwnerIds);
     }

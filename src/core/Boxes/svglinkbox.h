@@ -70,6 +70,7 @@ private:
     void wireTrack(const qsptr<SvgElementTrack>& track);
     void wireFlipbookTrack(const qsptr<SvgFlipbookTrack>& track);
     void collectFlipbookDescs(ContainerBox* container, QSet<QString>& liveOwnerIds);
+    void applyFlipbookDescIfPresent(BoundingBox* box, QSet<QString>& liveOwnerIds);
     void collectPivotDescs(ContainerBox* container);
     void applyPivotDescIfPresent(BoundingBox* box);
     void fileHandlerConnector(ConnContext &conn, SvgFileCacheHandler *obj);

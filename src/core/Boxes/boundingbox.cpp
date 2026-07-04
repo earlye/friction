@@ -1254,23 +1254,25 @@ QMatrix BoundingBox::getRelativeTransformAtFrame(const qreal relFrame) const {
     const QMatrix result = isZero6Dec(relFrame - anim_getCurrentRelFrame())
             ? mTransformAnimator->getRelativeTransform()
             : mTransformAnimator->getRelativeTransformAtFrame(relFrame);
-    static const QVector<QString> sTracedSubstrings = {
-        "right-arm", "left-arm", "path2164", "path5-7", "path6-1", "g51", "g33",
-        "parent", "direct-path-holder", "directpath", "wrapper", "wrappedpath"
-    };
-    const QString thisName = prp_getName();
-    bool traced = false;
-    for (const auto& s : sTracedSubstrings) {
-        if (thisName.contains(s)) { traced = true; break; }
-    }
-    if(traced) {
-        const auto pivot = mTransformAnimator->getPivot(relFrame);
-        qCDebug(lcBoxPivot) << "getRelativeTransformAtFrame:" << prp_getName()
-                            << "relFrame=" << relFrame
-                            << "m11=" << result.m11() << "m12=" << result.m12()
-                            << "m21=" << result.m21() << "m22=" << result.m22()
-                            << "dx=" << result.dx() << "dy=" << result.dy()
-                            << "pivot=" << pivot;
+    if(lcBoxPivot().isDebugEnabled()) {
+        static const QVector<QString> sTracedSubstrings = {
+            "right-arm", "left-arm", "path2164", "path5-7", "path6-1", "g51", "g33",
+            "parent", "direct-path-holder", "directpath", "wrapper", "wrappedpath"
+        };
+        const QString thisName = prp_getName();
+        bool traced = false;
+        for (const auto& s : sTracedSubstrings) {
+            if (thisName.contains(s)) { traced = true; break; }
+        }
+        if(traced) {
+            const auto pivot = mTransformAnimator->getPivot(relFrame);
+            qCDebug(lcBoxPivot) << "getRelativeTransformAtFrame:" << prp_getName()
+                                << "relFrame=" << relFrame
+                                << "m11=" << result.m11() << "m12=" << result.m12()
+                                << "m21=" << result.m21() << "m22=" << result.m22()
+                                << "dx=" << result.dx() << "dy=" << result.dy()
+                                << "pivot=" << pivot;
+        }
     }
     return result;
 }
