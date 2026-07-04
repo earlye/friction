@@ -198,11 +198,16 @@ protected:
     StrokeSvgAttributes mStrokeAttributes;
     TextSvgAttributes mTextAttributes;
 
-    // once set by an ancestor's display:none, stays set: a child's own
-    // display:inline can't undo an ancestor being removed from the render
-    // tree. visibility:hidden is treated the same way for simplicity, even
-    // though CSS lets a descendant's visibility:visible override it —
-    // that override isn't supported here.
+    // this element's own display:none/visibility:hidden only — deliberately
+    // not inherited from ancestors. Rendering already stops descending into
+    // an invisible box's children (ContainerBox::processChildData), so an
+    // ancestor's hidden state hides this subtree without baking a visible=
+    // false into every descendant. Baking it in would be irreversible: e.g.
+    // SvgFlipbookTrack toggles a page container's own visibility to switch
+    // frames, but pages are commonly authored as Inkscape layers saved with
+    // style="display:none" on all-but-the-edited one — if that were baked
+    // into each descendant at import, the flipbook's toggle of the page
+    // container would never bring them back.
     bool mHidden = false;
 };
 
@@ -1265,7 +1270,6 @@ void BoxSvgAttributes::setParent(const BoxSvgAttributes &parent) {
     mStrokeAttributes = parent.getStrokeAttributes();
     mTextAttributes = parent.getTextAttributes();
     mFillRule = parent.getFillRule();
-    mHidden = parent.mHidden;
 }
 
 SkPathFillType BoxSvgAttributes::getFillRule() const {

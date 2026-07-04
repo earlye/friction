@@ -999,6 +999,9 @@ void processChildData(BoundingBox * const child,
                       const QMatrix& thisM,
                       const qreal absFrame,
                       QList<ChildRenderData>& delayed) {
+    // BoxSvgAttributes::mHidden (svgimporter.cpp) relies on this early
+    // return to cascade a hidden ancestor's state to descendants at render
+    // time, instead of baking it into each descendant's own visibility.
     if(!child->isFrameFVisibleAndInDurationRect(childRelFrame)) return;
     if(child->isGroup()) {
         const auto childGroup = static_cast<ContainerBox*>(child);
