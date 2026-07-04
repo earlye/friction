@@ -198,9 +198,11 @@ protected:
     StrokeSvgAttributes mStrokeAttributes;
     TextSvgAttributes mTextAttributes;
 
-    // once set by an ancestor's display:none/visibility:hidden, stays set:
-    // a child's own display:inline can't undo an ancestor being removed
-    // from the render tree
+    // once set by an ancestor's display:none, stays set: a child's own
+    // display:inline can't undo an ancestor being removed from the render
+    // tree. visibility:hidden is treated the same way for simplicity, even
+    // though CSS lets a descendant's visibility:visible override it —
+    // that override isn't supported here.
     bool mHidden = false;
 };
 
