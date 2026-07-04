@@ -50,6 +50,8 @@ public:
 
     void anim_setAbsFrame(const int frame) override;
 
+    void prp_setNameAction(const QString &newName) override;
+
     void writeBoundingBox(eWriteStream& dst) const override;
     void readBoundingBox(eReadStream& src) override;
 
@@ -66,6 +68,7 @@ protected:
 
 private:
     void updateContent();
+    void syncAutoName(const QString& contentName);
     void resolveElementTracks();
     void wireTrack(const qsptr<SvgElementTrack>& track);
     void wireFlipbookTrack(const qsptr<SvgFlipbookTrack>& track);
@@ -86,6 +89,10 @@ private:
         SvgFlipbookTrack* controllerTrack;
         QMap<int, BoundingBox*> resolvedPages;
     };
+
+    QString mAutoName;
+    QString mManualName;
+    bool mMigrateLegacyName = false;
 
     QList<qsptr<Gradient>> mGradients;
     QList<qsptr<SvgElementTrack>> mElementTracks;

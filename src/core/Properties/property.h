@@ -204,7 +204,7 @@ public:
     qreal prp_absFrameToRelFrameF(const qreal absFrame) const;
     qreal prp_relFrameToAbsFrameF(const qreal relFrame) const;
     const QString &prp_getName() const;
-    void prp_setNameAction(const QString &newName);
+    virtual void prp_setNameAction(const QString &newName);
     void prp_setName(const QString &newName);
 
     bool prp_differencesBetweenRelFrames(

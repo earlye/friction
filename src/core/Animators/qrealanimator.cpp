@@ -692,6 +692,10 @@ void QrealAnimator::multSavedValueToCurrentValue(const qreal multBy) {
     // the drag has something to act on, without snapping straight to a
     // "full size" 1 on the very first pixel of movement.
     const qreal seed = mSavedCurrentValue == 0 ? 0.1 : mSavedCurrentValue;
+    qCDebug(lcAnimator) << "multSavedValueToCurrentValue" << prp_getName()
+                         << "savedValue=" << mSavedCurrentValue
+                         << "seed=" << seed << "multBy=" << multBy
+                         << "result=" << seed * multBy;
     setCurrentBaseValue(seed * multBy);
 }
 

@@ -1546,6 +1546,19 @@ void BoxSvgAttributes::loadBoundingBoxAttributes(const QDomElement &element) {
     }
 
     mDecomposedTrans = MatrixDecomposition::decompose(mRelTransform);
+    // Heuristic tripwire, not a hard limit: legitimate SVGs rarely decompose
+    // to >10x scale, so this flags likely matrix-decomposition bugs (e.g. a
+    // near-singular QR decomposition) for investigation.
+    if(qAbs(mDecomposedTrans.fScaleX) > 10 || qAbs(mDecomposedTrans.fScaleY) > 10) {
+        qCWarning(lcSvgImport) << "loadBoundingBoxAttributes: exploded scale for"
+                               << element.attribute("id") << "transform=" << matrixStr
+                               << "mRelTransform m11=" << mRelTransform.m11()
+                               << "m12=" << mRelTransform.m12()
+                               << "m21=" << mRelTransform.m21()
+                               << "m22=" << mRelTransform.m22()
+                               << "decomposed scaleX=" << mDecomposedTrans.fScaleX
+                               << "scaleY=" << mDecomposedTrans.fScaleY;
+    }
 }
 
 #include "Animators/paintsettingsanimator.h"

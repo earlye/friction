@@ -50,6 +50,7 @@ namespace EvFormat {
         svgLinkElementTracks = 35,
         svgLinkElementTrackData = 36,
         svgLinkFlipbookTracks = 37,
+        svgLinkManualName = 38,
 
         nextVersion
     };
