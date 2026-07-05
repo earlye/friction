@@ -139,7 +139,12 @@ QList<FlipbookPageEntry> SvgFlipbookTrack::pageEntries() const {
     QList<FlipbookPageEntry> result;
     for (auto it = mResolvedPages.begin(); it != mResolvedPages.end(); ++it) {
         BoundingBox* const box = it.value();
-        if (!box) continue;
+        if (!box) {
+            qCWarning(lcSvgFlipbookTrack) << "pageEntries:" << prp_getName()
+                                          << "page" << it.key()
+                                          << "has a null resolved box - skipping";
+            continue;
+        }
         const auto query = parseSvgLabel(
                     box->property("svgInkscapeLabelRaw").toString());
         const QString name = query.baseName.isEmpty() ?
@@ -148,7 +153,7 @@ QList<FlipbookPageEntry> SvgFlipbookTrack::pageEntries() const {
             it.key(), QStringLiteral("%1-%2").arg(it.key()).arg(name), false};
     }
     const int idx = currentPageIndex();
-    if (!mResolvedPages.contains(idx)) {
+    if (!mResolvedPages.contains(idx) || !mResolvedPages.value(idx)) {
         int pos = 0;
         while (pos < result.count() && result.at(pos).index < idx) pos++;
         result.insert(pos, FlipbookPageEntry{

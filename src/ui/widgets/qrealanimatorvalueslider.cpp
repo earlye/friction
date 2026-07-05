@@ -362,7 +362,10 @@ void QrealAnimatorValueSlider::targetHasExpressionChanged()
 void QrealAnimatorValueSlider::commitValue(QrealAnimator* const target,
                                             const qreal value)
 {
-    if (!target) return;
+    if (!target) {
+        qCWarning(lcLocked) << "commitValue: null target, value" << value << "discarded";
+        return;
+    }
     target->prp_startTransform();
     target->setCurrentBaseValue(value);
     target->prp_finishTransform();

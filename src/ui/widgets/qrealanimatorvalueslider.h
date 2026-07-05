@@ -66,9 +66,9 @@ public:
 
     // Commits a single value in one shot (start/set/finish transform), so
     // undo-grouping and auto-keyframing-when-recording behave identically to
-    // a slider drag ending on the same value. For discrete pickers (e.g. a
-    // combo box) editing a QrealAnimator without going through the slider's
-    // drag lifecycle.
+    // a slider drag ending on the same value. Use this for discrete pickers
+    // (e.g. a combo box) that edit a QrealAnimator without going through
+    // the slider's drag lifecycle.
     static void commitValue(QrealAnimator* const target, const qreal value);
 
 protected:

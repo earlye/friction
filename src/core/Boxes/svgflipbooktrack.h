@@ -90,8 +90,11 @@ signals:
     void pageChanged();
     // Emitted when the resolved page *set* changes (relink, rename, add/
     // remove page children) - distinct from pageChanged(), which only
-    // covers the current index changing. A picker UI should repopulate its
-    // item list on this signal and just re-select on pageChanged().
+    // covers the current index changing. A picker should repopulate its
+    // item list on this signal; it may also repopulate on pageChanged()
+    // for simplicity, though only the selection actually needs to change
+    // then. Note: fires on every resolve pass, not deduplicated against
+    // the previous page set.
     void pagesChanged();
 
 private:
