@@ -61,6 +61,12 @@ Here are the `kind`s introduced so far:
     1: "mouth:opened"
   ```
 
+  In the Boxes panel, a flipbook track's `index` property row shows a
+  page-name combo box (`0-Walk`, `1-Run`, ...) alongside the raw
+  numeric slider, so the artist can pick a page by name instead of
+  typing its index. An index with no matching page shows as
+  `N-(unresolved)` with a red background; a page whose label has no
+  display name shows as `N-(unnamed)`.
 
 - `pivot` Tells friction that the enclosing `<circle>`'s center is the
   rotation point for the nearest ancestor annotated with `kind:
