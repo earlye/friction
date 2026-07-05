@@ -41,6 +41,15 @@ public:
     explicit SvgFlipbookTrack(const QString& ownerElementId);
 
     void setPageMap(const QMap<int, QString>& pageMap);
+    // Sets already-resolved page targets directly, bypassing name-based
+    // re-resolution in resolveTargets(). For the inkscape:label
+    // convention, a page's target is definitionally the direct child it
+    // was scanned from - re-resolving it by name (as setPageMap()'s
+    // locator-string mechanism does, needed since a YAML `map:` value
+    // can point anywhere in the tree) risks aliasing to an unrelated box
+    // that happens to share the same display name, e.g. the flipbook's
+    // own container.
+    void setResolvedPagesDirect(const QMap<int, BoundingBox*>& pages);
     void setOwnerBox(ContainerBox* ownerBox);
     bool isOrphaned() const { return mOrphaned; }
     void setOrphaned(bool orphaned);
@@ -64,6 +73,7 @@ signals:
 
 private:
     bool mOrphaned = true;
+    bool mDirectResolve = false;
     QMap<int, QString> mPageMap;
     QMap<int, BoundingBox*> mResolvedPages;
     qsptr<IntAnimator> mIndex;

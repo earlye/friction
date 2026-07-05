@@ -141,8 +141,8 @@ static void applyFlipbookFollower(SvgFlipbookTrack* controllerTrack,
                                    BoundingBox* follower,
                                    const QMap<int, BoundingBox*>& resolvedPages);
 
-static bool collectPageChildLabels(ContainerBox* owner,
-                                    QMap<int, QString>& outPageMap);
+static bool collectPageChildren(ContainerBox* owner,
+                                 QMap<int, BoundingBox*>& outPages);
 
 // Kind declared via the legacy `<desc>` YAML block, normalized to the new
 // short label-convention vocabulary ("animation", "flipbook") - empty if
@@ -459,21 +459,29 @@ void SvgLinkBox::collectFollowLabelDescs(ContainerBox* svgRoot,
                                                        " has no resolved flipbook track:"
                                                     << query.controller;
                         } else {
-                            QMap<int, QString> pageNames;
-                            if (!collectPageChildLabels(enve_cast<ContainerBox*>(box), pageNames)) {
+                            // Unlike a flipbook's own pages, a follower's
+                            // page children are placeholders whose *name*
+                            // is the locator for the real target elsewhere
+                            // in the tree (mirroring the legacy `map:`
+                            // field's arbitrary-locator semantics) - so
+                            // each child is re-resolved by name here,
+                            // deliberately, rather than shown directly.
+                            QMap<int, BoundingBox*> pageChildren;
+                            if (!collectPageChildren(enve_cast<ContainerBox*>(box), pageChildren)) {
                                 qCWarning(lcSvgFollower) << "follow" << box->prp_getName()
                                                         << "duplicate page= among its own"
                                                            " children, not following";
                             } else {
                                 QMap<int, BoundingBox*> resolvedPages;
-                                for (auto it = pageNames.begin(); it != pageNames.end(); ++it) {
-                                    BoundingBox* child = findBoxByName(svgRoot, it.value());
+                                for (auto it = pageChildren.begin(); it != pageChildren.end(); ++it) {
+                                    const QString childName = it.value()->prp_getName();
+                                    BoundingBox* child = findBoxByName(svgRoot, childName);
                                     if (child) {
                                         resolvedPages[it.key()] = child;
                                     } else {
                                         qCWarning(lcSvgFollower) << "follow" << box->prp_getName()
                                                                 << "page" << it.key()
-                                                                << "child not found:" << it.value();
+                                                                << "child not found:" << childName;
                                     }
                                 }
                                 qCDebug(lcSvgFollower) << "follow" << box->prp_getName()
@@ -548,17 +556,21 @@ void SvgLinkBox::applyFlipbookDescIfPresent(BoundingBox* box,
     }
 }
 
-// Builds a page->childName map from `owner`'s direct children's own
-// `?page=N` labels (the label-convention replacement for a `map:` field).
-// A duplicate page index across siblings is a hard error: the whole map is
-// discarded (empty result, `false` returned) rather than silently picking
-// one - matching the "know when something didn't resolve" error posture
-// agreed for this convention. Gaps/non-contiguous indices are fine.
-static bool collectPageChildLabels(ContainerBox* owner,
-                                    QMap<int, QString>& outPageMap) {
-    outPageMap.clear();
+// Collects `owner`'s direct children keyed by their own `?page=N` label
+// (the label-convention replacement for a `map:` field) - returning the
+// child boxes themselves, not a name to re-resolve later: unlike a YAML
+// `map:` locator (an arbitrary string that can point anywhere in the
+// tree), a label-convention page's target is definitionally the direct
+// child it was scanned from. A duplicate page index across siblings is a
+// hard error: the whole result is discarded (empty, `false` returned)
+// rather than silently picking one - matching the "know when something
+// didn't resolve" error posture agreed for this convention. Gaps/
+// non-contiguous indices are fine.
+static bool collectPageChildren(ContainerBox* owner,
+                                 QMap<int, BoundingBox*>& outPages) {
+    outPages.clear();
     if (!owner) return true;
-    QMap<int, QString> pageMap;
+    QMap<int, BoundingBox*> pages;
     bool duplicate = false;
     for (auto* child : owner->getContainedBoxes()) {
         const auto query = parseSvgLabel(
@@ -570,19 +582,19 @@ static bool collectPageChildLabels(ContainerBox* owner,
                                           << "- ignoring";
         }
         if (!query.hasPage) continue;
-        const auto it = pageMap.find(query.page);
-        if (it != pageMap.end()) {
+        const auto it = pages.find(query.page);
+        if (it != pages.end()) {
             qCWarning(lcSvgFlipbookTrack) << "duplicate page=" << query.page
-                                          << "on children" << it.value()
+                                          << "on children" << it.value()->prp_getName()
                                           << "and" << child->prp_getName()
                                           << "of" << owner->prp_getName();
             duplicate = true;
             continue;
         }
-        pageMap[query.page] = child->prp_getName();
+        pages[query.page] = child;
     }
     if (duplicate) return false;
-    outPageMap = pageMap;
+    outPages = pages;
     return true;
 }
 
@@ -596,9 +608,9 @@ void SvgLinkBox::applyFlipbookLabelIfPresent(BoundingBox* box,
     // turns out empty/invalid - same "don't mistake malformed metadata for
     // a renamed-away track" reasoning as applyFlipbookDescIfPresent.
     liveOwnerIds.insert(ownerId);
-    QMap<int, QString> pageMap;
-    if (!collectPageChildLabels(enve_cast<ContainerBox*>(box), pageMap)) return;
-    if (pageMap.isEmpty()) return;
+    QMap<int, BoundingBox*> pages;
+    if (!collectPageChildren(enve_cast<ContainerBox*>(box), pages)) return;
+    if (pages.isEmpty()) return;
     SvgFlipbookTrack* existing = nullptr;
     for (const auto& track : mFlipbookTracks) {
         if (track->prp_getName() == ownerId) { existing = track.get(); break; }
@@ -609,7 +621,7 @@ void SvgLinkBox::applyFlipbookLabelIfPresent(BoundingBox* box,
         existing = track.get();
     }
     existing->setOwnerBox(enve_cast<ContainerBox*>(box));
-    existing->setPageMap(pageMap);
+    existing->setResolvedPagesDirect(pages);
 }
 
 void SvgLinkBox::collectFlipbookDescs(ContainerBox* container,
