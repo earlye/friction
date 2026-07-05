@@ -30,8 +30,17 @@
 #include "canvas.h"
 #include "Private/document.h"
 
+#include <QLoggingCategory>
 #include <QMenu>
 #include <QMouseEvent>
+
+// lcLocked (Animators/eboxorsound.h) is declared in the core module without
+// a CORE_EXPORT wrapper, so it only resolves for qCDebug() calls, which are
+// compiled out of Release builds - a qCWarning() use of it here would be an
+// unresolved symbol at link time on Windows, where core/ui are separate
+// DLLs. Use a ui-local category instead, matching e.g. boxsinglewidget.cpp's
+// lcBoxList.
+Q_LOGGING_CATEGORY(lcQrealAnimatorValueSlider, "friction.ui.qrealanimatorvalueslider", QtWarningMsg)
 
 QrealAnimatorValueSlider::QrealAnimatorValueSlider(qreal minVal,
                                                    qreal maxVal,
@@ -357,6 +366,18 @@ void QrealAnimatorValueSlider::targetHasExpressionChanged()
         setName(valueToText(mBaseValue));
         setNameVisible(hasExpression);
     } else { setNameVisible(false); }
+}
+
+void QrealAnimatorValueSlider::commitValue(QrealAnimator* const target,
+                                            const qreal value)
+{
+    if (!target) {
+        qCWarning(lcQrealAnimatorValueSlider) << "commitValue: null target, value" << value << "discarded";
+        return;
+    }
+    target->prp_startTransform();
+    target->setCurrentBaseValue(value);
+    target->prp_finishTransform();
 }
 
 void QrealAnimatorValueSlider::setTarget(QrealAnimator * const animator)

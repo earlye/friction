@@ -231,6 +231,16 @@ void SvgLinkBox::resolveElementTracks() {
             });
         if (!exists) addElementTrack(name);
     }
+    // Clear before any flipbook page resolution below: setResolvedPagesDirect()
+    // (called via applyFlipbookLabelIfPresent()/collectFlipbookDescs() just
+    // below) emits pagesChanged(), and resolveTargets()/syncToTargets()
+    // further down emit pagesChanged()/pageChanged() - both re-apply
+    // mFlipbookFollowers synchronously via wireFlipbookTrack()'s connections.
+    // Those bindings still point into the SVG subtree updateContent() already
+    // tore down (see removeAllContained() in updateContent()), so they must
+    // not be dereferenced until collectFlipbookFollowerDescs rebuilds them
+    // against the freshly imported tree.
+    mFlipbookFollowers.clear();
     QSet<QString> liveFlipbookOwners;
     applyFlipbookDescIfPresent(svgRoot, liveFlipbookOwners);
     applyFlipbookLabelIfPresent(svgRoot, liveFlipbookOwners);
@@ -248,12 +258,6 @@ void SvgLinkBox::resolveElementTracks() {
         }
     }
     for (auto* track : flipbookTracksToRemove) removeFlipbookTrack(track);
-    // Clear before resolving targets: syncToTargets() below emits pageChanged(),
-    // which re-applies mFlipbookFollowers synchronously — those bindings still
-    // point into the SVG subtree updateContent() already tore down, so they
-    // must not be dereferenced until collectFlipbookFollowerDescs rebuilds them
-    // against the freshly imported tree.
-    mFlipbookFollowers.clear();
     for (const auto& track : mFlipbookTracks) {
         if (!liveFlipbookOwners.contains(track->prp_getName())) continue;
         track->resolveTargets(svgRoot);
@@ -738,15 +742,16 @@ void SvgLinkBox::wireFlipbookTrack(const qsptr<SvgFlipbookTrack>& track) {
     track->setParent(this);
     connect(track.get(), &SvgFlipbookTrack::deleteRequested,
             this, [this, t = track.get()]() { removeFlipbookTrack(t); });
-    connect(track.get(), &SvgFlipbookTrack::pageChanged,
-            this, [this, t = track.get()]() {
-                for (const auto& binding : mFlipbookFollowers) {
-                    if (binding.controllerTrack == t) {
-                        applyFlipbookFollower(binding.controllerTrack, binding.follower,
-                                              binding.resolvedPages);
-                    }
-                }
-            });
+    const auto resyncFollowers = [this, t = track.get()]() {
+        for (const auto& binding : mFlipbookFollowers) {
+            if (binding.controllerTrack == t) {
+                applyFlipbookFollower(binding.controllerTrack, binding.follower,
+                                      binding.resolvedPages);
+            }
+        }
+    };
+    connect(track.get(), &SvgFlipbookTrack::pageChanged, this, resyncFollowers);
+    connect(track.get(), &SvgFlipbookTrack::pagesChanged, this, resyncFollowers);
     const int swtId = ca_getNumberOfChildren()
                       + mElementTracks.count()
                       + mFlipbookTracks.count() - 1;

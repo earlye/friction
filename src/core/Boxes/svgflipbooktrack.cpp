@@ -27,6 +27,7 @@
 #include "Boxes/boundingbox.h"
 #include "Animators/eboxorsound.h"
 #include "Animators/intanimator.h"
+#include "svglabel.h"
 #include "typemenu.h"
 #include "ReadWrite/ewritestream.h"
 #include "ReadWrite/ereadstream.h"
@@ -76,6 +77,7 @@ void SvgFlipbookTrack::setPageMap(const QMap<int, QString>& pageMap) {
 void SvgFlipbookTrack::setResolvedPagesDirect(const QMap<int, BoundingBox*>& pages) {
     mResolvedPages = pages;
     mDirectResolve = true;
+    emit pagesChanged();
 }
 
 void SvgFlipbookTrack::setOwnerBox(ContainerBox* ownerBox) {
@@ -109,6 +111,7 @@ void SvgFlipbookTrack::resolveTargets(ContainerBox* svgRoot) {
         }
     }
     mOrphaned = mPageMap.isEmpty() || !anyResolved;
+    emit pagesChanged();
 }
 
 void SvgFlipbookTrack::syncToTargets() {
@@ -130,6 +133,33 @@ void SvgFlipbookTrack::syncToTargets() {
 
 int SvgFlipbookTrack::currentPageIndex() const {
     return mIndex->getStepIntValue();
+}
+
+QList<FlipbookPageEntry> SvgFlipbookTrack::pageEntries() const {
+    QList<FlipbookPageEntry> result;
+    for (auto it = mResolvedPages.begin(); it != mResolvedPages.end(); ++it) {
+        BoundingBox* const box = it.value();
+        if (!box) {
+            qCWarning(lcSvgFlipbookTrack) << "pageEntries:" << prp_getName()
+                                          << "page" << it.key()
+                                          << "has a null resolved box - skipping";
+            continue;
+        }
+        const auto query = parseSvgLabel(
+                    box->property("svgInkscapeLabelRaw").toString());
+        const QString name = query.baseName.isEmpty() ?
+                    QStringLiteral("(unnamed)") : box->prp_getName();
+        result << FlipbookPageEntry{
+            it.key(), QStringLiteral("%1-%2").arg(it.key()).arg(name), false};
+    }
+    const int idx = currentPageIndex();
+    if (!mResolvedPages.contains(idx) || !mResolvedPages.value(idx)) {
+        int pos = 0;
+        while (pos < result.count() && result.at(pos).index < idx) pos++;
+        result.insert(pos, FlipbookPageEntry{
+            idx, QStringLiteral("%1-(unresolved)").arg(idx), true});
+    }
+    return result;
 }
 
 void SvgFlipbookTrack::writeTrack(eWriteStream& dst) const {

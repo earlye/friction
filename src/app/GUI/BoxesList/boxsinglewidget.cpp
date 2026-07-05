@@ -31,6 +31,7 @@
 
 #include "Boxes/containerbox.h"
 #include "Boxes/svgelementtrack.h"
+#include "Boxes/svgflipbooktrack.h"
 #include "widgets/qrealanimatorvalueslider.h"
 #include "boxscroller.h"
 #include "GUI/keysview.h"
@@ -96,6 +97,7 @@ bool BoxSingleWidget::sStaticPixmapsLoaded = false;
 #include "widgets/ecombobox.h"
 
 #include <QApplication>
+#include <QBrush>
 #include <QDrag>
 #include <QMenu>
 #include <QInputDialog>
@@ -268,6 +270,11 @@ BoxSingleWidget::BoxSingleWidget(BoxScroller * const parent)
     mSecondValueSlider = new QrealAnimatorValueSlider(nullptr, this);
     mMainLayout->addWidget(mSecondValueSlider, Qt::AlignRight);
 
+    mFlipbookPageCombo = createCombo(this);
+    mMainLayout->addWidget(mFlipbookPageCombo, Qt::AlignRight);
+    mFlipbookPageCombo->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Minimum);
+    mFlipbookPageCombo->hide();
+
     mColorButton = new ColorAnimatorButton(nullptr, this);
     mMainLayout->addWidget(mColorButton, Qt::AlignRight);
     mColorButton->setFixedHeight(mColorButton->height() - 6);
@@ -388,6 +395,45 @@ void BoxSingleWidget::setComboProperty(ComboBoxProperty* const combo) {
     mPropertyComboBox->show();
 }
 
+void BoxSingleWidget::populateFlipbookPageCombo(SvgFlipbookTrack* const track) {
+    mFlipbookPageCombo->clear();
+    const auto entries = track->pageEntries();
+    const int curIdx = track->currentPageIndex();
+    int selectedRow = -1;
+    bool unresolvedSelected = false;
+    for (int i = 0; i < entries.count(); i++) {
+        const auto& entry = entries.at(i);
+        mFlipbookPageCombo->addItem(entry.label, entry.index);
+        if (entry.unresolved) {
+            mFlipbookPageCombo->setItemData(i, QBrush(Qt::red), Qt::BackgroundRole);
+        }
+        if (entry.index == curIdx) {
+            selectedRow = i;
+            unresolvedSelected = entry.unresolved;
+        }
+    }
+    mFlipbookPageCombo->setCurrentIndex(selectedRow);
+    mFlipbookPageCombo->setStyleSheet(unresolvedSelected ?
+        QStringLiteral("QComboBox { background: red; }") : QString());
+}
+
+void BoxSingleWidget::setFlipbookPageCombo(SvgFlipbookTrack* const track) {
+    populateFlipbookPageCombo(track);
+    const auto indexAnimator = track->getIndexAnimator();
+    mTargetConn << connect(mFlipbookPageCombo,
+                           qOverload<int>(&QComboBox::activated),
+                           this, [this, indexAnimator](const int row) {
+        const int pageIndex = mFlipbookPageCombo->itemData(row).toInt();
+        QrealAnimatorValueSlider::commitValue(indexAnimator, pageIndex);
+        Document::sInstance->actionFinished();
+    });
+    mTargetConn << connect(track, &SvgFlipbookTrack::pagesChanged,
+                           this, [this, track]() { populateFlipbookPageCombo(track); });
+    mTargetConn << connect(track, &SvgFlipbookTrack::pageChanged,
+                           this, [this, track]() { populateFlipbookPageCombo(track); });
+    mFlipbookPageCombo->show();
+}
+
 void BoxSingleWidget::handlePropertySelectedChanged(const Property *prop)
 {
     if (const auto graph = enve_cast<GraphAnimator*>(prop)) {
@@ -495,6 +541,7 @@ void BoxSingleWidget::setTargetAbstraction(SWT_Abstraction *abs) {
     bool valueSliderVisible = false;
     bool secondValueSliderVisible = false;
     bool colorButtonVisible = false;
+    bool flipbookPageComboVisible = false;
 
     if(boundingBox) {
         mBlendModeVisible = true;
@@ -521,6 +568,10 @@ void BoxSingleWidget::setTargetAbstraction(SWT_Abstraction *abs) {
         mValueSlider->setTarget(qra);
         valueSliderVisible = true;
         mValueSlider->setIsLeftSlider(false);
+        if(const auto flipTrack = enve_cast<SvgFlipbookTrack*>(prop->getParent())) {
+            setFlipbookPageCombo(flipTrack);
+            flipbookPageComboVisible = true;
+        }
     } else if(complexAnimator) {
         if(const auto col = enve_cast<ColorAnimator*>(prop)) {
             colorButtonVisible = true;
@@ -602,6 +653,7 @@ void BoxSingleWidget::setTargetAbstraction(SWT_Abstraction *abs) {
     mValueSlider->setVisible(valueSliderVisible);
     mSecondValueSlider->setVisible(secondValueSliderVisible);
     mColorButton->setVisible(colorButtonVisible);
+    mFlipbookPageCombo->setVisible(flipbookPageComboVisible);
 
     updateCompositionBoxVisible();
     updatePathCompositionBoxVisible();

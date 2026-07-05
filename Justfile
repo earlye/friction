@@ -170,6 +170,15 @@ run-debug-1306445d371c:
 run-debug-6d33bbeb7e3f:
     QT_LOGGING_RULES="friction.svg.import=true;friction.svgfollower=true;friction.svgflipbooktrack=true;SvgElementTrack=true;friction.svgpivot=true" just run-debug > log.txt 2>&1;
 
+# Debug issue 3dc99fd1649a: flipbook track "index" property row needs a
+# page-name combo box alongside the raw numeric slider. Watch
+# friction.svgflipbooktrack for pagesChanged/pageChanged emission and
+# resolved-page-set changes, friction.ui.boxlist for the new combo's
+# row-widget wiring in BoxSingleWidget, and friction.svgfollower to confirm
+# bound flipbook followers re-sync when the page set changes.
+run-debug-3dc99fd1649a:
+    QT_LOGGING_RULES="friction.svgflipbooktrack=true;friction.ui.boxlist=true;friction.svgfollower=true" just run-debug > log.txt 2>&1;
+
 # Produce the universal DMG from the two arch builds
 package: build
     #!/usr/bin/env bash

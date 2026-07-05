@@ -26,13 +26,25 @@
 
 #include "Animators/staticcomplexanimator.h"
 #include <QLoggingCategory>
+#include <QList>
 #include <QMap>
+#include <QString>
 
 Q_DECLARE_LOGGING_CATEGORY(lcSvgFlipbookTrack)
 
 class ContainerBox;
 class BoundingBox;
 class IntAnimator;
+
+// A single page choice for a UI picker: `label` is the display text (already
+// index-prefixed, e.g. "0-Walk"/"3-(unnamed)"/"5-(unresolved)"); `unresolved`
+// marks the synthetic entry synthesized when the current index has no
+// matching page.
+struct FlipbookPageEntry {
+    int index;
+    QString label;
+    bool unresolved = false;
+};
 
 class CORE_EXPORT SvgFlipbookTrack : public StaticComplexAnimator {
     Q_OBJECT
@@ -57,6 +69,12 @@ public:
     void resolveTargets(ContainerBox* svgRoot);
     void syncToTargets();
     int currentPageIndex() const;
+    IntAnimator* getIndexAnimator() const { return mIndex.get(); }
+
+    // Pages ordered ascending by index, formatted for display in a picker
+    // (see FlipbookPageEntry). Includes a synthetic unresolved entry for
+    // the current index when it has no matching resolved page.
+    QList<FlipbookPageEntry> pageEntries() const;
 
     void writeTrack(eWriteStream& dst) const;
     void readTrack(eReadStream& src);
@@ -70,6 +88,14 @@ public:
 signals:
     void deleteRequested();
     void pageChanged();
+    // Emitted when the resolved page *set* changes (relink, rename, add/
+    // remove page children) - distinct from pageChanged(), which only
+    // covers the current index changing. A picker should repopulate its
+    // item list on this signal; it may also repopulate on pageChanged()
+    // for simplicity, though only the selection actually needs to change
+    // then. Note: fires on every resolve pass, not deduplicated against
+    // the previous page set.
+    void pagesChanged();
 
 private:
     bool mOrphaned = true;
