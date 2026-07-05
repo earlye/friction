@@ -100,6 +100,40 @@ Here are the `kind`s introduced so far:
   controller: "my-controller-element"
   ```
 
+#### `inkscape:label` query-string convention (alternative to `<desc>` YAML)
+
+Everything above can also be declared on `inkscape:label` itself as a
+query string, instead of hand-editing a `<desc>` element in Inkscape's
+XML editor — the label field is directly exposed in Inkscape's Object
+Properties panel. Both mechanisms coexist indefinitely; a box may
+declare its kind via `<desc>` YAML *or* via this label convention.
+
+Grammar: `{display-name}?kind={animation|flipbook|follow|pivot}[&controller={name}][&page=N]`.
+Only the part before the first `?` is ever shown as the box's name or
+used to resolve `controller=`/page-child references — there is no
+escaping for a literal `?` in a display name.
+
+- `nodeA?kind=animation` — same as `kind: animation-node`.
+- `nodeA?kind=flipbook` — same as `kind: flipbook`, but there's no
+  `map:` field: direct children whose own label carries `?page=N`
+  (e.g. `mouth-closed?page=0`) are the flipbook's pages, in index
+  order. A duplicate `page=` across siblings is a hard error (the
+  whole page map is discarded, logged via `qCWarning`); gaps/
+  non-contiguous indices are fine.
+- `nodeB?kind=follow&controller=nodeA` — collapses
+  `animation-follower`/`flipbook-follower` into a single `follow`
+  kind. Which behavior it gets (mirror-transform vs. mirror-flipbook-
+  page) is dispatched by looking up `controller`'s own effective kind
+  (checking its label first, falling back to its `<desc>` YAML `kind:`
+  if it has no label kind) — not declared on the follower itself. A
+  follow-kind's own mirror-flipbook-page mapping uses the same
+  `?page=N`-on-children convention as flipbook, in place of a `map:`
+  field. A controller that resolves to no kind, or to another `follow`
+  (chained following), is a hard error — not supported.
+- `?kind=pivot` — same as `kind: pivot`, set on the `<circle>`'s own
+  label. No display-name portion is required (nothing ever references
+  a pivot by name).
+
 #### History
 
 - [#4](https://github.com/earlye/friction/pull/4): per-element

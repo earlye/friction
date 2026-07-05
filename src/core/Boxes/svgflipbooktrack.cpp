@@ -70,6 +70,12 @@ SvgFlipbookTrack::SvgFlipbookTrack(const QString& ownerElementId)
 void SvgFlipbookTrack::setPageMap(const QMap<int, QString>& pageMap) {
     mPageMap = pageMap;
     mResolvedPages.clear();
+    mDirectResolve = false;
+}
+
+void SvgFlipbookTrack::setResolvedPagesDirect(const QMap<int, BoundingBox*>& pages) {
+    mResolvedPages = pages;
+    mDirectResolve = true;
 }
 
 void SvgFlipbookTrack::setOwnerBox(ContainerBox* ownerBox) {
@@ -83,6 +89,13 @@ void SvgFlipbookTrack::setOrphaned(const bool orphaned) {
 }
 
 void SvgFlipbookTrack::resolveTargets(ContainerBox* svgRoot) {
+    if (mDirectResolve) {
+        // Pages were already resolved directly to their owning children
+        // by setResolvedPagesDirect() - see its declaration for why
+        // re-resolving them by name here would be wrong.
+        mOrphaned = mResolvedPages.isEmpty();
+        return;
+    }
     mResolvedPages.clear();
     bool anyResolved = false;
     for (auto it = mPageMap.begin(); it != mPageMap.end(); ++it) {
