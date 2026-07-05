@@ -6,54 +6,60 @@ This document tracks changes landed in [earlye/friction](https://github.com/earl
 
 ### SVG-Driven Animation System (SvgElementTrack)
 
-A new animation targeting system that reads YAML annotations from SVG
-`<desc>` elements and automatically creates animation tracks bound to
-SVG elements by `id` or `inkscape:label`.
+A new animation targeting system that reads annotations on SVG
+elements and automatically creates animation tracks bound to SVG
+elements by `id` or `inkscape:label`.
 
 This is the biggest feature here, and the one that motivated this
 fork. The intent is to change friction from "everything in this file"
 to "this file is the puppeteer controlling a bunch of other SVGs. If
 you improve those SVGs, just re-render here."
 
-The mechanism that allows this is a new annotation system that you can
-inject into SVG documents. It features YAML in SVG `<desc>`
-elements. Each embedded YAML document represents a discriminated union
-of the form below, where "other-attributes" are dependent on the `kind`.
+The primary way to declare an annotation is a query-string convention
+on `inkscape:label` itself — the label field is directly exposed in
+Inkscape's Object Properties panel, so no XML editing is required. An
+alternative mechanism embeds the same information as YAML in a `<desc>`
+element instead, which is needed for a couple of things the label
+convention can't express (see below). Both mechanisms coexist
+indefinitely; a box may declare its kind via either one.
 
-```yaml
-kind: "kind-identifier"
-# ... other-attributes here
-```
+Grammar: `{display-name}?kind={animation|flipbook|follow|pivot}[&controller={name}][&page=N]`.
+Only the part before the first `?` is ever shown as the box's name or
+used to resolve `controller=`/page-child references — there is no
+escaping for a literal `?` in a display name.
 
 Here are the `kind`s introduced so far:
 
-- `animation-node` There are no additional attributes yet
-  (inverse-kinematics is being contemplated). This tells friction to
-  include an SvgElementTrack in the timeline that controls the
-  enclosing svg element.
+- `animation` Tells friction to include an SvgElementTrack in the
+  timeline that controls the enclosing svg element. There are no
+  additional attributes yet (inverse-kinematics is being contemplated).
   ![inkscape screenshot](earlye-fork/example-animation-node.jpg)
 
   SvgElementTrack explicitly leaves out a `pivot` track - use the
-  `pivot` `<desc>` annotation instead.
+  `pivot` kind instead.
 
-  Example Syntax:
+  Label Syntax: `nodeA?kind=animation`
+
+  `<desc>` YAML equivalent:
   ```yaml
   kind: animation-node
   ```
 
 - `flipbook` Sets up the enclosed svg element as a flipbook in
-  friction. The `map` yaml attribute tells friction which other
-  elements to display/hide when the flipbook index changes in
-  friction.
+  friction, mapping an index to a page element to display.
 
   ![inkscape screenshot](earlye-fork/example-flipbook.jpg)
 
-  Additional attributes:
+  Label Syntax: `nodeA?kind=flipbook`, with direct children whose own
+  label carries `?page=N` (e.g. `mouth-closed?page=0`) as the
+  flipbook's pages, in index order. A duplicate `page=` across
+  siblings is a hard error (the whole page map is discarded, logged
+  via `qCWarning`); gaps/non-contiguous indices are fine.
 
-    - `map` maps index to locator-for-page. locator is svg id
-      attribute, with fallback to svg inkscape:label attribute.
-
-  Example Syntax:
+  `<desc>` YAML alternative: an explicit `map` attribute from index to
+  locator-for-page (locator is svg `id` attribute, with fallback to
+  svg `inkscape:label` attribute), useful when pages aren't direct
+  children of the flipbook element.
   ```yaml
   kind: flipbook
   map:
@@ -69,12 +75,16 @@ Here are the `kind`s introduced so far:
   display name shows as `N-(unnamed)`.
 
 - `pivot` Tells friction that the enclosing `<circle>`'s center is the
-  rotation point for the nearest ancestor annotated with `kind:
-  animation-node`
+  rotation point for the nearest ancestor annotated with kind
+  `animation`.
 
   ![inkscape screenshot](earlye-fork/example-pivot.jpg)
 
-  Example Syntax:
+  Label Syntax: `?kind=pivot`, set on the `<circle>`'s own label. No
+  display-name portion is required (nothing ever references a pivot by
+  name).
+
+  `<desc>` YAML equivalent:
   ```svg
   <g id='a'>
     <desc>kind: animation-node</desc>
@@ -82,63 +92,32 @@ Here are the `kind`s introduced so far:
     ...other-stuff...
   </g>
   ```
-
   In this example, `32,45` become the pivot coordinates for group `a`.
 
-  Example Syntax:
-  ```yaml
-  kind: pivot
-  ```
+- `follow` Makes the enclosing element automatically mirror the
+  transform (or flipbook page) of a named controller element at every
+  frame — both during timeline playback and when the user drags the
+  controller directly on the canvas.
 
-- `animation-follower` Makes the enclosing element automatically mirror
-  the transform of a named controller element at every frame — both
-  during timeline playback and when the user drags the controller
-  directly on the canvas.
+  Label Syntax: `nodeB?kind=follow&controller=nodeA`. Which behavior it
+  gets (mirror-transform vs. mirror-flipbook-page) is dispatched by
+  looking up `controller`'s own effective kind (checking its label
+  first, falling back to its `<desc>` YAML `kind:` if it has no label
+  kind) — not declared on the follower itself. A follow-kind's own
+  mirror-flipbook-page mapping uses the same `?page=N`-on-children
+  convention as flipbook. A controller that resolves to no kind, or to
+  another `follow` (chained following), is a hard error — not
+  supported.
 
-  Additional attributes:
-
-    - `controller` the `id` or `inkscape:label` of the element whose
-      transform this element should follow.
-
-  Example Syntax:
+  `<desc>` YAML equivalent (called `animation-follower` in this form):
   ```yaml
   kind: animation-follower
   controller: "my-controller-element"
   ```
+  Additional attributes:
 
-#### `inkscape:label` query-string convention (alternative to `<desc>` YAML)
-
-Everything above can also be declared on `inkscape:label` itself as a
-query string, instead of hand-editing a `<desc>` element in Inkscape's
-XML editor — the label field is directly exposed in Inkscape's Object
-Properties panel. Both mechanisms coexist indefinitely; a box may
-declare its kind via `<desc>` YAML *or* via this label convention.
-
-Grammar: `{display-name}?kind={animation|flipbook|follow|pivot}[&controller={name}][&page=N]`.
-Only the part before the first `?` is ever shown as the box's name or
-used to resolve `controller=`/page-child references — there is no
-escaping for a literal `?` in a display name.
-
-- `nodeA?kind=animation` — same as `kind: animation-node`.
-- `nodeA?kind=flipbook` — same as `kind: flipbook`, but there's no
-  `map:` field: direct children whose own label carries `?page=N`
-  (e.g. `mouth-closed?page=0`) are the flipbook's pages, in index
-  order. A duplicate `page=` across siblings is a hard error (the
-  whole page map is discarded, logged via `qCWarning`); gaps/
-  non-contiguous indices are fine.
-- `nodeB?kind=follow&controller=nodeA` — collapses
-  `animation-follower`/`flipbook-follower` into a single `follow`
-  kind. Which behavior it gets (mirror-transform vs. mirror-flipbook-
-  page) is dispatched by looking up `controller`'s own effective kind
-  (checking its label first, falling back to its `<desc>` YAML `kind:`
-  if it has no label kind) — not declared on the follower itself. A
-  follow-kind's own mirror-flipbook-page mapping uses the same
-  `?page=N`-on-children convention as flipbook, in place of a `map:`
-  field. A controller that resolves to no kind, or to another `follow`
-  (chained following), is a hard error — not supported.
-- `?kind=pivot` — same as `kind: pivot`, set on the `<circle>`'s own
-  label. No display-name portion is required (nothing ever references
-  a pivot by name).
+    - `controller` the `id` or `inkscape:label` of the element whose
+      transform this element should follow.
 
 #### History
 
@@ -155,6 +134,13 @@ escaping for a literal `?` in a display name.
   desc tag
 - [#65](https://github.com/earlye/friction/pull/65): `kind:animation-follower`
   mirrors named controller element transforms
+- [#78](https://github.com/earlye/friction/pull/78): `kind:flipbook-follower`
+  mirrors named controller's flipbook page
+- [#85](https://github.com/earlye/friction/pull/85): `inkscape:label`
+  `?kind=...` convention alongside `<desc>` YAML metadata
+- [#87](https://github.com/earlye/friction/pull/87): docs promote
+  `inkscape:label` to the primary convention, `<desc>` YAML to the
+  alternative
 
 ### Camera as a first class entity
 
