@@ -38,6 +38,11 @@ struct SvgLabelQuery {
     bool hasController = false;
     int page = 0;
     bool hasPage = false;
+    // Set when a `page=` key was present but failed to parse as an int
+    // (e.g. `page=` empty, `page=abc`) - distinct from `page=` simply
+    // being absent, so callers can warn rather than silently treating a
+    // typo the same as "no page declared".
+    bool pageMalformed = false;
 };
 
 SvgLabelQuery parseSvgLabel(const QString& label);

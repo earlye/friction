@@ -563,6 +563,12 @@ static bool collectPageChildLabels(ContainerBox* owner,
     for (auto* child : owner->getContainedBoxes()) {
         const auto query = parseSvgLabel(
                     child->property("svgInkscapeLabelRaw").toString());
+        if (query.pageMalformed) {
+            qCWarning(lcSvgFlipbookTrack) << "malformed page= on"
+                                          << child->prp_getName()
+                                          << "of" << owner->prp_getName()
+                                          << "- ignoring";
+        }
         if (!query.hasPage) continue;
         const auto it = pageMap.find(query.page);
         if (it != pageMap.end()) {

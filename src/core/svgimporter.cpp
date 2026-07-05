@@ -1678,7 +1678,9 @@ void BoxSvgAttributes::apply(BoundingBox *box) const
     if (!mLabel.isEmpty()) {
         // The label may carry a `?kind=...` metadata query string (see
         // svglabel.h) - only the part before the first '?' is ever shown
-        // as the box's name or used as its resolvable identity key. The
+        // as the box's name or used as its resolvable identity key (if
+        // that part is empty, e.g. a bare `?kind=pivot`, `mId` is used
+        // for the name instead and svgInkscapeLabel is left unset). The
         // raw label is kept on the box so svglinkbox.cpp can re-parse the
         // query string when resolving kind/controller/page conventions.
         const QString baseName = parseSvgLabel(mLabel).baseName;

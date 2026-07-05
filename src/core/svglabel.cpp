@@ -50,6 +50,8 @@ SvgLabelQuery parseSvgLabel(const QString& label) {
             if (ok) {
                 result.page = page;
                 result.hasPage = true;
+            } else {
+                result.pageMalformed = true;
             }
         }
     }
