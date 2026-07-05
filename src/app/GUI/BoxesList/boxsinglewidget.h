@@ -47,6 +47,7 @@ class ColorAnimator;
 class ColorAnimatorButton;
 class BoxScroller;
 class eComboBox;
+class SvgFlipbookTrack;
 
 class BoxSingleWidget : public SingleWidget {
 public:
@@ -137,6 +138,8 @@ private:
     ColorAnimator* getColorTarget() const;
 
     void setComboProperty(ComboBoxProperty * const combo);
+    void setFlipbookPageCombo(SvgFlipbookTrack * const track);
+    void populateFlipbookPageCombo(SvgFlipbookTrack * const track);
 
     void handlePropertySelectedChanged(const Property *prop);
 
@@ -163,6 +166,7 @@ private:
 
     PixmapActionButton *mPromoteToLayerButton;
     eComboBox *mPropertyComboBox;
+    eComboBox *mFlipbookPageCombo;
     eComboBox *mBlendModeCombo;
     eComboBox *mPathBlendModeCombo;
     eComboBox *mFillTypeCombo;

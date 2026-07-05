@@ -64,6 +64,13 @@ public:
     bool hasTarget();
     bool isTargetDisabled();
 
+    // Commits a single value in one shot (start/set/finish transform), so
+    // undo-grouping and auto-keyframing-when-recording behave identically to
+    // a slider drag ending on the same value. For discrete pickers (e.g. a
+    // combo box) editing a QrealAnimator without going through the slider's
+    // drag lifecycle.
+    static void commitValue(QrealAnimator* const target, const qreal value);
+
 protected:
     void paint(QPainter *p);
     void openContextMenu(const QPoint &globalPos);

@@ -359,6 +359,15 @@ void QrealAnimatorValueSlider::targetHasExpressionChanged()
     } else { setNameVisible(false); }
 }
 
+void QrealAnimatorValueSlider::commitValue(QrealAnimator* const target,
+                                            const qreal value)
+{
+    if (!target) return;
+    target->prp_startTransform();
+    target->setCurrentBaseValue(value);
+    target->prp_finishTransform();
+}
+
 void QrealAnimatorValueSlider::setTarget(QrealAnimator * const animator)
 {
     if (animator == mTarget) { return; }
