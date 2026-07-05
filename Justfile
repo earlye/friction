@@ -163,6 +163,13 @@ run-debug-3ecf05783ce1:
 run-debug-1306445d371c:
     QT_LOGGING_RULES="friction.svg.import=true;friction.svgflipbooktrack=true;friction.containerbox.insert=true" just run-debug > log.txt 2>&1;
 
+# Debug issue 6d33bbeb7e3f: inkscape:label `?kind=...` convention replacing
+# <desc> YAML metadata (animation/flipbook/follow/pivot). Watch svg.import
+# for label parsing at import time, and the follower/flipbooktrack/
+# elementtrack categories for resolveElementTracks()'s label-based dispatch.
+run-debug-6d33bbeb7e3f:
+    QT_LOGGING_RULES="friction.svg.import=true;friction.svgfollower=true;friction.svgflipbooktrack=true;SvgElementTrack=true;friction.svgpivot=true" just run-debug > log.txt 2>&1;
+
 # Produce the universal DMG from the two arch builds
 package: build
     #!/usr/bin/env bash

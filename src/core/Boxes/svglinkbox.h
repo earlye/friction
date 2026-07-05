@@ -74,6 +74,7 @@ private:
     void wireFlipbookTrack(const qsptr<SvgFlipbookTrack>& track);
     void collectFlipbookDescs(ContainerBox* container, QSet<QString>& liveOwnerIds);
     void applyFlipbookDescIfPresent(BoundingBox* box, QSet<QString>& liveOwnerIds);
+    void applyFlipbookLabelIfPresent(BoundingBox* box, QSet<QString>& liveOwnerIds);
     void collectPivotDescs(ContainerBox* container);
     void applyPivotDescIfPresent(BoundingBox* box);
     void fileHandlerConnector(ConnContext &conn, SvgFileCacheHandler *obj);
@@ -101,6 +102,7 @@ private:
     QList<FlipbookFollowerBinding> mFlipbookFollowers;
     void collectFollowerDescs(ContainerBox* svgRoot, ContainerBox* container);
     void collectFlipbookFollowerDescs(ContainerBox* svgRoot, ContainerBox* container);
+    void collectFollowLabelDescs(ContainerBox* svgRoot, ContainerBox* container);
 };
 
 #endif // SVGLINKBOX_H

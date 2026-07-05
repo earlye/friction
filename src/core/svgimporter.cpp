@@ -28,6 +28,7 @@
 #include <QtXml/QDomDocument>
 #include <QRegularExpression>
 #include "svgdesc.h"
+#include "svglabel.h"
 
 #include "Boxes/containerbox.h"
 #include "colorhelpers.h"
@@ -174,6 +175,7 @@ public:
     const StrokeSvgAttributes &getStrokeAttributes() const;
     const TextSvgAttributes &getTextAttributes() const;
     const SvgDescDocuments &getDescYaml() const;
+    const QString &getLabel() const { return mLabel; }
 
     void loadBoundingBoxAttributes(const QDomElement &element);
 
@@ -531,22 +533,30 @@ void loadCircle(const QDomElement &pathElement,
     const QString cXstr = pathElement.attribute("cx");
     const QString cYstr = pathElement.attribute("cy");
 
+    bool isPivot = false;
     for (const auto& doc : attributes.getDescYaml()) {
         if (!doc.isYaml) continue;
         try {
             const auto node = YAML::Load(doc.content.toStdString());
             if (node["kind"] && node["kind"].as<std::string>() == "pivot") {
-                const QPointF pos(cXstr.toDouble(), cYstr.toDouble());
-                qCDebug(lcSvgImport) << "loadCircle: kind:pivot detected"
-                                     << "cx=" << cXstr << "cy=" << cYstr
-                                     << "parentGroup name=" << parentGroup->prp_getName()
-                                     << "svgElementId=" << parentGroup->property("svgElementId").toString()
-                                     << "mCenterPivotPlanned=" << parentGroup->isCenterPivotPlanned()
-                                     << "setting svgPivotPos=" << pos;
-                parentGroup->setProperty("svgPivotPos", pos);
-                return;
+                isPivot = true;
+                break;
             }
         } catch (...) {}
+    }
+    if (!isPivot) {
+        isPivot = parseSvgLabel(attributes.getLabel()).kind == QStringLiteral("pivot");
+    }
+    if (isPivot) {
+        const QPointF pos(cXstr.toDouble(), cYstr.toDouble());
+        qCDebug(lcSvgImport) << "loadCircle: kind:pivot detected"
+                             << "cx=" << cXstr << "cy=" << cYstr
+                             << "parentGroup name=" << parentGroup->prp_getName()
+                             << "svgElementId=" << parentGroup->property("svgElementId").toString()
+                             << "mCenterPivotPlanned=" << parentGroup->isCenterPivotPlanned()
+                             << "setting svgPivotPos=" << pos;
+        parentGroup->setProperty("svgPivotPos", pos);
+        return;
     }
 
     const QString rStr = pathElement.attribute("r");
@@ -1666,8 +1676,17 @@ void BoxSvgAttributes::apply(BoundingBox *box) const
     if (mHidden) { box->setVisibleFromAnimation(false); }
 
     if (!mLabel.isEmpty()) {
-        box->prp_setName(mLabel);
-        box->setProperty("svgInkscapeLabel", mLabel);
+        // The label may carry a `?kind=...` metadata query string (see
+        // svglabel.h) - only the part before the first '?' is ever shown
+        // as the box's name or used as its resolvable identity key. The
+        // raw label is kept on the box so svglinkbox.cpp can re-parse the
+        // query string when resolving kind/controller/page conventions.
+        const QString baseName = parseSvgLabel(mLabel).baseName;
+        box->setProperty("svgInkscapeLabelRaw", mLabel);
+        if (!baseName.isEmpty()) {
+            box->prp_setName(baseName);
+            box->setProperty("svgInkscapeLabel", baseName);
+        } else if (!mId.isEmpty()) { box->prp_setName(mId); }
     } else if (!mId.isEmpty()) { box->prp_setName(mId); }
     if (!mId.isEmpty()) { box->setProperty("svgElementId", mId); }
 

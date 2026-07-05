@@ -29,6 +29,7 @@
 #include "exceptions.h"
 #include "fileshandler.h"
 #include "svgimporter.h"
+#include "svglabel.h"
 #include "Animators/gradient.h"
 #include "Animators/transformanimator.h"
 #include "Animators/qpointfanimator.h"
@@ -140,18 +141,41 @@ static void applyFlipbookFollower(SvgFlipbookTrack* controllerTrack,
                                    BoundingBox* follower,
                                    const QMap<int, BoundingBox*>& resolvedPages);
 
-static void collectAnimationNodes(BoundingBox* box,
-                                   QList<BoundingBox*>& result) {
+static bool collectPageChildLabels(ContainerBox* owner,
+                                    QMap<int, QString>& outPageMap);
+
+// Kind declared via the legacy `<desc>` YAML block, normalized to the new
+// short label-convention vocabulary ("animation", "flipbook") - empty if
+// none declared or unrecognized. Lets label-convention code (e.g. a
+// `follow` controller lookup) dispatch consistently regardless of which of
+// the two coexisting mechanisms actually declared the target's kind.
+static QString descYamlKind(const BoundingBox* box) {
     for (const auto& doc : box->getDescYaml()) {
         if (!doc.isYaml) continue;
         try {
             const auto node = YAML::Load(doc.content.toStdString());
-            if (node["kind"] && node["kind"].as<std::string>() == "animation-node") {
-                result << box;
-                break;
-            }
+            if (!node["kind"]) continue;
+            const std::string kind = node["kind"].as<std::string>();
+            if (kind == "animation-node") return QStringLiteral("animation");
+            if (kind == "flipbook") return QStringLiteral("flipbook");
         } catch (...) {}
     }
+    return QString();
+}
+
+// Effective kind of `box`, checking the new `?kind=...` label convention
+// first and falling back to the legacy `<desc>` YAML mechanism - the two
+// coexist, and either may declare a box's kind.
+static QString effectiveKindOf(BoundingBox* box) {
+    const QString labelKind = parseSvgLabel(
+                box->property("svgInkscapeLabelRaw").toString()).kind;
+    if (!labelKind.isEmpty()) return labelKind;
+    return descYamlKind(box);
+}
+
+static void collectAnimationNodes(BoundingBox* box,
+                                   QList<BoundingBox*>& result) {
+    if (effectiveKindOf(box) == QStringLiteral("animation")) result << box;
     if (const auto container = enve_cast<ContainerBox*>(box)) {
         for (const auto& child : container->getContainedBoxes()) {
             collectAnimationNodes(child, result);
@@ -209,6 +233,7 @@ void SvgLinkBox::resolveElementTracks() {
     }
     QSet<QString> liveFlipbookOwners;
     applyFlipbookDescIfPresent(svgRoot, liveFlipbookOwners);
+    applyFlipbookLabelIfPresent(svgRoot, liveFlipbookOwners);
     collectFlipbookDescs(svgRoot, liveFlipbookOwners);
     applyPivotDescIfPresent(svgRoot);
     collectPivotDescs(svgRoot);
@@ -237,6 +262,7 @@ void SvgLinkBox::resolveElementTracks() {
     mFollowers.clear();
     if (svgRoot) collectFollowerDescs(svgRoot, svgRoot);
     if (svgRoot) collectFlipbookFollowerDescs(svgRoot, svgRoot);
+    if (svgRoot) collectFollowLabelDescs(svgRoot, svgRoot);
     for (const auto& binding : mFlipbookFollowers) {
         applyFlipbookFollower(binding.controllerTrack, binding.follower, binding.resolvedPages);
     }
@@ -393,6 +419,84 @@ void SvgLinkBox::collectFlipbookFollowerDescs(ContainerBox* svgRoot,
     }
 }
 
+// Label-convention follower: `?kind=follow&controller={name}`. Unlike the
+// legacy YAML scheme, there is a single follower kind - which of the two
+// bindings (transform-mirror vs flipbook-page-mirror) it becomes depends on
+// the *controller*'s own effective kind, resolved here. A controller with
+// no recognized kind, or itself declared `follow` (chained following), is
+// a hard error: not supported, logged rather than silently skipped.
+void SvgLinkBox::collectFollowLabelDescs(ContainerBox* svgRoot,
+                                          ContainerBox* container) {
+    for (auto* box : container->getContainedBoxes()) {
+        const auto query = parseSvgLabel(
+                    box->property("svgInkscapeLabelRaw").toString());
+        if (query.kind == QStringLiteral("follow")) {
+            if (!query.hasController || query.controller.isEmpty()) {
+                qCWarning(lcSvgFollower) << "follow" << box->prp_getName()
+                                        << "missing controller=";
+            } else {
+                BoundingBox* controllerBox = findBoxByName(svgRoot, query.controller);
+                if (!controllerBox) {
+                    qCWarning(lcSvgFollower) << "follow" << box->prp_getName()
+                                            << "controller not found:" << query.controller;
+                } else {
+                    const QString controllerKind = effectiveKindOf(controllerBox);
+                    if (controllerKind == QStringLiteral("animation")) {
+                        qCDebug(lcSvgFollower) << "follow" << box->prp_getName()
+                                              << "-> animation controller" << query.controller;
+                        mFollowers.append(FollowerBinding{box, controllerBox});
+                    } else if (controllerKind == QStringLiteral("flipbook")) {
+                        SvgFlipbookTrack* controllerTrack = nullptr;
+                        for (const auto& track : mFlipbookTracks) {
+                            if (track->prp_getName() == query.controller) {
+                                controllerTrack = track.get();
+                                break;
+                            }
+                        }
+                        if (!controllerTrack) {
+                            qCWarning(lcSvgFollower) << "follow" << box->prp_getName()
+                                                    << "controller declares kind=flipbook but"
+                                                       " has no resolved flipbook track:"
+                                                    << query.controller;
+                        } else {
+                            QMap<int, QString> pageNames;
+                            if (!collectPageChildLabels(enve_cast<ContainerBox*>(box), pageNames)) {
+                                qCWarning(lcSvgFollower) << "follow" << box->prp_getName()
+                                                        << "duplicate page= among its own"
+                                                           " children, not following";
+                            } else {
+                                QMap<int, BoundingBox*> resolvedPages;
+                                for (auto it = pageNames.begin(); it != pageNames.end(); ++it) {
+                                    BoundingBox* child = findBoxByName(svgRoot, it.value());
+                                    if (child) {
+                                        resolvedPages[it.key()] = child;
+                                    } else {
+                                        qCWarning(lcSvgFollower) << "follow" << box->prp_getName()
+                                                                << "page" << it.key()
+                                                                << "child not found:" << it.value();
+                                    }
+                                }
+                                qCDebug(lcSvgFollower) << "follow" << box->prp_getName()
+                                                      << "-> flipbook controller" << query.controller
+                                                      << "pages:" << resolvedPages.keys();
+                                mFlipbookFollowers.append(
+                                    FlipbookFollowerBinding{box, controllerTrack, resolvedPages});
+                            }
+                        }
+                    } else {
+                        qCWarning(lcSvgFollower) << "follow" << box->prp_getName()
+                                                << "controller" << query.controller
+                                                << "has no kind=animation/flipbook (kind="
+                                                << controllerKind << "), cannot follow it";
+                    }
+                }
+            }
+        }
+        if (const auto sub = enve_cast<ContainerBox*>(box))
+            collectFollowLabelDescs(svgRoot, sub);
+    }
+}
+
 void SvgLinkBox::applyFlipbookDescIfPresent(BoundingBox* box,
                                              QSet<QString>& liveOwnerIds) {
     const auto boxAsContainer = enve_cast<ContainerBox*>(box);
@@ -444,10 +548,69 @@ void SvgLinkBox::applyFlipbookDescIfPresent(BoundingBox* box,
     }
 }
 
+// Builds a page->childName map from `owner`'s direct children's own
+// `?page=N` labels (the label-convention replacement for a `map:` field).
+// A duplicate page index across siblings is a hard error: the whole map is
+// discarded (empty result, `false` returned) rather than silently picking
+// one - matching the "know when something didn't resolve" error posture
+// agreed for this convention. Gaps/non-contiguous indices are fine.
+static bool collectPageChildLabels(ContainerBox* owner,
+                                    QMap<int, QString>& outPageMap) {
+    outPageMap.clear();
+    if (!owner) return true;
+    QMap<int, QString> pageMap;
+    bool duplicate = false;
+    for (auto* child : owner->getContainedBoxes()) {
+        const auto query = parseSvgLabel(
+                    child->property("svgInkscapeLabelRaw").toString());
+        if (!query.hasPage) continue;
+        const auto it = pageMap.find(query.page);
+        if (it != pageMap.end()) {
+            qCWarning(lcSvgFlipbookTrack) << "duplicate page=" << query.page
+                                          << "on children" << it.value()
+                                          << "and" << child->prp_getName()
+                                          << "of" << owner->prp_getName();
+            duplicate = true;
+            continue;
+        }
+        pageMap[query.page] = child->prp_getName();
+    }
+    if (duplicate) return false;
+    outPageMap = pageMap;
+    return true;
+}
+
+void SvgLinkBox::applyFlipbookLabelIfPresent(BoundingBox* box,
+                                              QSet<QString>& liveOwnerIds) {
+    const auto query = parseSvgLabel(
+                box->property("svgInkscapeLabelRaw").toString());
+    if (query.kind != QStringLiteral("flipbook")) return;
+    const QString ownerId = box->prp_getName();
+    // Owner still declares itself a flipbook even if its page map below
+    // turns out empty/invalid - same "don't mistake malformed metadata for
+    // a renamed-away track" reasoning as applyFlipbookDescIfPresent.
+    liveOwnerIds.insert(ownerId);
+    QMap<int, QString> pageMap;
+    if (!collectPageChildLabels(enve_cast<ContainerBox*>(box), pageMap)) return;
+    if (pageMap.isEmpty()) return;
+    SvgFlipbookTrack* existing = nullptr;
+    for (const auto& track : mFlipbookTracks) {
+        if (track->prp_getName() == ownerId) { existing = track.get(); break; }
+    }
+    if (!existing) {
+        auto track = enve::make_shared<SvgFlipbookTrack>(ownerId);
+        wireFlipbookTrack(track);
+        existing = track.get();
+    }
+    existing->setOwnerBox(enve_cast<ContainerBox*>(box));
+    existing->setPageMap(pageMap);
+}
+
 void SvgLinkBox::collectFlipbookDescs(ContainerBox* container,
                                        QSet<QString>& liveOwnerIds) {
     for (auto* box : container->getContainedBoxes()) {
         applyFlipbookDescIfPresent(box, liveOwnerIds);
+        applyFlipbookLabelIfPresent(box, liveOwnerIds);
         if (const auto sub = enve_cast<ContainerBox*>(box))
             collectFlipbookDescs(sub, liveOwnerIds);
     }
