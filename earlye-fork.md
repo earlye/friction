@@ -134,6 +134,13 @@ Here are the `kind`s introduced so far:
   desc tag
 - [#65](https://github.com/earlye/friction/pull/65): `kind:animation-follower`
   mirrors named controller element transforms
+- [#78](https://github.com/earlye/friction/pull/78): `kind:flipbook-follower`
+  mirrors named controller's flipbook page
+- [#85](https://github.com/earlye/friction/pull/85): `inkscape:label`
+  `?kind=...` convention alongside `<desc>` YAML metadata
+- [#87](https://github.com/earlye/friction/pull/87): docs promote
+  `inkscape:label` to the primary convention, `<desc>` YAML to the
+  alternative
 
 ### Camera as a first class entity
 
