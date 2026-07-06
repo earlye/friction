@@ -26,14 +26,46 @@
 #include "eevent.h"
 #include "Private/document.h"
 
+#include <QLoggingCategory>
+
+Q_LOGGING_CATEGORY(lcGizmo, "friction.gizmo", QtWarningMsg)
+
 using namespace Friction::Core;
 
 void Canvas::renderGizmos(SkCanvas * const canvas,
                           const qreal qInvZoom,
                           const float invZoom)
 {
+    Q_UNUSED(invZoom);
     if (!mGizmos.fState.visible) { return; }
-    updateRotateHandleGeometry(qInvZoom);
+    updateRotateHandleGeometry(qInvZoom); // world-space geometry, still used for hit-testing
+
+    // Project the pivot to device/screen space exactly once — a single-point transform,
+    // so any float32 error here is a sub-pixel placement wobble, not a shattering shape —
+    // then build the drawn geometry directly in that space (raw pixel constants, scale=1,
+    // no invZoom) so it can't lose precision to catastrophic cancellation at extreme zoom.
+    const SkPoint skPivot = SkPoint::Make(toSkScalar(mGizmos.fState.pivot.x()),
+                                          toSkScalar(mGizmos.fState.pivot.y()));
+    SkPoint skScreenPivot;
+    canvas->getTotalMatrix().mapPoints(&skScreenPivot, &skPivot, 1);
+    const QPointF screenPivot(skScreenPivot.x(), skScreenPivot.y());
+
+    const auto shapes = Gizmos::buildShapes(mGizmos.fConfig,
+                                            mGizmos.fState.showRotate,
+                                            mGizmos.fState.showPosition,
+                                            mGizmos.fState.showScale,
+                                            mGizmos.fState.showShear,
+                                            1.0,
+                                            screenPivot);
+
+    qCDebug(lcGizmo) << "renderGizmos: qInvZoom=" << qInvZoom
+                     << "pivot=" << mGizmos.fState.pivot
+                     << "screenPivot=" << screenPivot
+                     << "rotateHandleRadius(screen)=" << shapes.rotateHandleRadius;
+
+    canvas->save();
+    canvas->resetMatrix();
+
     auto drawAxisLine = [&](const Gizmos::LineGeometry &geom,
                              const QColor &baseColor,
                              Gizmos::AxisConstraint axis,
@@ -89,7 +121,7 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
 
     if (mGizmos.fState.rotateHandleVisible) {
         if (mGizmos.fState.showRotate) {
-            if (mGizmos.fState.rotateHandlePolygon.size() >= 3) {
+            if (shapes.rotateHandlePolygon.size() >= 3) {
                 QColor fillColor = mGizmos.fTheme.colorZ;
                 fillColor.setAlpha(mGizmos.fState.rotateHandleHovered ? static_cast<int>(mGizmos.fTheme.colorAlphaFillHover)
                                                                       : static_cast<int>(mGizmos.fTheme.colorAlphaFillNormal));
@@ -104,7 +136,7 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
                 borderPaint.setStyle(SkPaint::kStroke_Style);
                 borderPaint.setStrokeJoin(SkPaint::kRound_Join);
                 borderPaint.setStrokeCap(SkPaint::kRound_Cap);
-                borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * qInvZoom * 0.2f));
+                borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * 0.2f));
                 const int strokeLighten = mGizmos.fState.rotateHandleHovered ? mGizmos.fTheme.colorLightenHover : mGizmos.fTheme.colorLightenNormal;
                 QColor strokeColor = mGizmos.fTheme.colorZ.darker(strokeLighten);
                 strokeColor.setAlpha(mGizmos.fState.rotateHandleHovered ? static_cast<int>(mGizmos.fTheme.colorAlphaStrokeHover)
@@ -113,7 +145,7 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
 
                 SkPath path;
                 bool first = true;
-                for (const QPointF &pt : mGizmos.fState.rotateHandlePolygon) {
+                for (const QPointF &pt : shapes.rotateHandlePolygon) {
                     const SkPoint skPt = SkPoint::Make(toSkScalar(pt.x()), toSkScalar(pt.y()));
                     if (first) {
                         path.moveTo(skPt);
@@ -156,7 +188,7 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
             SkPaint borderPaint;
             borderPaint.setAntiAlias(true);
             borderPaint.setStyle(SkPaint::kStroke_Style);
-            borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * invZoom * 0.2f));
+            borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * 0.2f));
 
             const int borderLighten = hovered ? mGizmos.fTheme.colorLightenHover : mGizmos.fTheme.colorLightenNormal;
             QColor borderColor = color.darker(borderLighten);
@@ -226,7 +258,7 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
             SkPaint borderPaint;
             borderPaint.setAntiAlias(true);
             borderPaint.setStyle(SkPaint::kStroke_Style);
-            borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * invZoom * 0.2f));
+            borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * 0.2f));
             const int borderLighten = hovered ? mGizmos.fTheme.colorLightenHover : mGizmos.fTheme.colorLightenNormal;
             QColor borderColor = color.darker(borderLighten);
             const qreal strokeAlphaScale = hovered ? mGizmos.fTheme.colorAlphaStrokeHover : mGizmos.fTheme.colorAlphaStrokeNormal;
@@ -279,7 +311,7 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
             SkPaint borderPaint;
             borderPaint.setAntiAlias(true);
             borderPaint.setStyle(SkPaint::kStroke_Style);
-            borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * invZoom * 0.2f));
+            borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * 0.2f));
             const int borderLighten = hovered ? mGizmos.fTheme.colorLightenHover : mGizmos.fTheme.colorLightenNormal;
             QColor borderColor = color.darker(borderLighten);
             const qreal strokeAlphaShear = hovered ? mGizmos.fTheme.colorAlphaStrokeHover : mGizmos.fTheme.colorAlphaStrokeNormal;
@@ -311,49 +343,56 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
             }
         };
         drawAxisRect(Gizmos::AxisConstraint::Y,
-                     mGizmos.fState.axisYGeom,
+                     shapes.axisYGeom,
                      QColor(mGizmos.fTheme.colorY.red(), mGizmos.fTheme.colorY.green(), mGizmos.fTheme.colorY.blue(),
                             mGizmos.fState.axisYHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawAxisRect(Gizmos::AxisConstraint::X,
-                     mGizmos.fState.axisXGeom,
+                     shapes.axisXGeom,
                      QColor(mGizmos.fTheme.colorX.red(), mGizmos.fTheme.colorX.green(), mGizmos.fTheme.colorX.blue(),
                             mGizmos.fState.axisXHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawAxisRect(Gizmos::AxisConstraint::Uniform,
-                     mGizmos.fState.axisUniformGeom,
+                     shapes.axisUniformGeom,
                      QColor(mGizmos.fTheme.colorZ.red(), mGizmos.fTheme.colorZ.green(), mGizmos.fTheme.colorZ.blue(),
                             mGizmos.fState.axisUniformHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawScaleSquare(Gizmos::ScaleHandle::Y,
-                        mGizmos.fState.scaleYGeom,
+                        shapes.scaleYGeom,
                         QColor(mGizmos.fTheme.colorY.red(), mGizmos.fTheme.colorY.green(), mGizmos.fTheme.colorY.blue(),
                                mGizmos.fState.scaleYHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawScaleSquare(Gizmos::ScaleHandle::X,
-                        mGizmos.fState.scaleXGeom,
+                        shapes.scaleXGeom,
                         QColor(mGizmos.fTheme.colorX.red(), mGizmos.fTheme.colorX.green(), mGizmos.fTheme.colorX.blue(),
                                mGizmos.fState.scaleXHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawScaleSquare(Gizmos::ScaleHandle::Uniform,
-                        mGizmos.fState.scaleUniformGeom,
+                        shapes.scaleUniformGeom,
                         QColor(mGizmos.fTheme.colorUniform.red(), mGizmos.fTheme.colorUniform.green(), mGizmos.fTheme.colorUniform.blue(),
                                mGizmos.fState.scaleUniformHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawShearCircle(Gizmos::ShearHandle::Y,
-                        mGizmos.fState.shearYGeom,
+                        shapes.shearYGeom,
                         QColor(mGizmos.fTheme.colorY.red(), mGizmos.fTheme.colorY.green(), mGizmos.fTheme.colorY.blue(),
                                mGizmos.fState.shearYHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawShearCircle(Gizmos::ShearHandle::X,
-                        mGizmos.fState.shearXGeom,
+                        shapes.shearXGeom,
                         QColor(mGizmos.fTheme.colorX.red(), mGizmos.fTheme.colorX.green(), mGizmos.fTheme.colorX.blue(),
                                mGizmos.fState.shearXHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
     }
 
-    drawAxisLine(mGizmos.fState.xLineGeom,
+    Gizmos::LineGeometry screenXLine = shapes.xLineGeom;
+    screenXLine.visible = mGizmos.fState.xLineGeom.visible;
+    Gizmos::LineGeometry screenYLine = shapes.yLineGeom;
+    screenYLine.visible = mGizmos.fState.yLineGeom.visible;
+
+    drawAxisLine(screenXLine,
                  mGizmos.fTheme.colorX,
                  Gizmos::AxisConstraint::X,
                  mGizmos.fState.axisXHovered,
                  true);
-    drawAxisLine(mGizmos.fState.yLineGeom,
+    drawAxisLine(screenYLine,
                  mGizmos.fTheme.colorY,
                  Gizmos::AxisConstraint::Y,
                  mGizmos.fState.axisYHovered,
                  false);
+
+    canvas->restore();
 }
 
 void Canvas::setGizmoVisibility(const Gizmos::Interact &ti,
@@ -636,213 +675,39 @@ void Canvas::updateRotateHandleGeometry(qreal invScale)
     }
 
     mGizmos.fState.rotateHandleAngleDeg = 0.0; // keep gizmo orientation screen-aligned
+    mGizmos.fState.rotateHandleSweepDeg = mGizmos.fConfig.rotateSweepDeg; // default sweep angle
+    mGizmos.fState.mRotateHandleStartOffsetDeg = mGizmos.fConfig.rotateBaseOffsetDeg; // default base angle offset
 
     QPointF pivot;
     if (mDocument.fPivotPosForGizmosValid) { pivot = mDocument.fPivotPosForGizmos; }
     else { pivot = mRotPivot->getAbsolutePos(); }
+    mGizmos.fState.pivot = pivot; // cached for renderGizmos to project to screen space
 
-    const qreal axisWidthWorld = mGizmos.fConfig.axisWidthPx * invScale;
-    const qreal axisHeightWorld = mGizmos.fConfig.axisHeightPx * invScale;
-    const qreal axisGapYWorld = mGizmos.fConfig.axisYOffsetPx * invScale;
-    const qreal axisGapXWorld = mGizmos.fConfig.axisXOffsetPx * invScale;
-    const qreal xLineLengthWorld = mGizmos.fConfig.xLineLengthPx * invScale;
-    const qreal xLineStrokeWorld = mGizmos.fConfig.xLineStrokePx * invScale;
-    const qreal yLineLengthWorld = mGizmos.fConfig.yLineLengthPx * invScale;
-    const qreal yLineStrokeWorld = mGizmos.fConfig.yLineStrokePx * invScale;
+    const auto shapes = Gizmos::buildShapes(mGizmos.fConfig,
+                                            mGizmos.fState.showRotate,
+                                            mGizmos.fState.showPosition,
+                                            mGizmos.fState.showScale,
+                                            mGizmos.fState.showShear,
+                                            invScale,
+                                            pivot);
 
-    // const qreal anchorOffset = axisWidthWorld * 0.5;
-    const qreal anchorOffset = 2.0 * invScale;
-    mGizmos.fState.rotateHandleAnchor = pivot + QPointF(anchorOffset, -anchorOffset);
-
-    const qreal baseRotateRadiusWorld = mGizmos.fConfig.rotateRadiusPx * invScale;
-    mGizmos.fState.rotateHandleRadius = baseRotateRadiusWorld;
-    mGizmos.fState.rotateHandleSweepDeg = mGizmos.fConfig.rotateSweepDeg; // default sweep angle
-    mGizmos.fState.mRotateHandleStartOffsetDeg = mGizmos.fConfig.rotateBaseOffsetDeg; // default base angle offset
-
-    const qreal strokeWorld = mGizmos.fConfig.rotateStrokePx * invScale;
-    const qreal sweepDegAbs = std::abs(mGizmos.fState.rotateHandleSweepDeg);
-    auto normalizeAngle = [](qreal degrees) {
-        degrees = std::fmod(degrees, 360.0);
-        if (degrees < 0.0) { degrees += 360.0; }
-        return degrees;
-    };
-    const qreal startAngleSk = normalizeAngle(mGizmos.fState.mRotateHandleStartOffsetDeg + mGizmos.fState.rotateHandleAngleDeg);
-    const qreal direction = (mGizmos.fState.rotateHandleSweepDeg >= 0.0) ? 1.0 : -1.0;
-    mGizmos.fState.rotateHandlePolygon.clear();
-    mGizmos.fState.rotateHandleHitPolygon.clear();
-
-    if (mGizmos.fState.showRotate && sweepDegAbs > std::numeric_limits<qreal>::epsilon()) {
-        const int segments = std::max(8, static_cast<int>(std::ceil(sweepDegAbs / 6.0)));
-        auto angleToPoint = [&](qreal angleDeg, qreal radius) {
-            const qreal angleRad = qDegreesToRadians(angleDeg);
-            return QPointF(mGizmos.fState.rotateHandleAnchor.x() + radius * std::cos(angleRad),
-                           mGizmos.fState.rotateHandleAnchor.y() + radius * std::sin(angleRad));
-        };
-        auto buildArcPolygon = [&](qreal halfThickness, QVector<QPointF> &storage) {
-            storage.clear();
-            const qreal outerRadius = mGizmos.fState.rotateHandleRadius + halfThickness;
-            if (outerRadius <= 0.0) { return; }
-            const qreal innerRadius = std::max(mGizmos.fState.rotateHandleRadius - halfThickness, 0.0);
-            storage.reserve((segments + 1) * 2);
-            for (int i = 0; i <= segments; ++i) {
-                const qreal angle = normalizeAngle(startAngleSk + direction * (sweepDegAbs * i) / segments);
-                storage.append(angleToPoint(angle, outerRadius));
-            }
-            if (innerRadius > std::numeric_limits<qreal>::epsilon()) {
-                for (int i = 0; i <= segments; ++i) {
-                    const qreal angle = normalizeAngle(startAngleSk + direction * sweepDegAbs - direction * (sweepDegAbs * i) / segments);
-                    storage.append(angleToPoint(angle, innerRadius));
-                }
-            } else {
-                storage.append(mGizmos.fState.rotateHandleAnchor);
-            }
-        };
-
-        buildArcPolygon(strokeWorld * 0.5, mGizmos.fState.rotateHandlePolygon);
-        const qreal hitHalfThickness = (mGizmos.fConfig.rotateHitWidthPx * invScale) * 0.5;
-        buildArcPolygon(hitHalfThickness, mGizmos.fState.rotateHandleHitPolygon);
-    }
-
-    mGizmos.fState.axisYGeom.center = pivot + QPointF(0.0, -axisGapYWorld);
-    mGizmos.fState.axisYGeom.size = QSizeF(axisWidthWorld, axisHeightWorld);
-    mGizmos.fState.axisYGeom.angleDeg = 0.0;
-    mGizmos.fState.axisYGeom.visible = mGizmos.fState.showPosition;
-    mGizmos.fState.axisYGeom.usePolygon = true;
-    mGizmos.fState.axisYGeom.polygonPoints = {
-        pivot + QPointF(0.0, - 10.0 * invScale),
-        pivot + QPointF(-2.0 * invScale, - 11.0 * invScale),
-        pivot + QPointF(-2.0 * invScale, - 55.0 * invScale),
-        pivot + QPointF(-6.0 * invScale, - 56.5 * invScale),
-        pivot + QPointF(0.0, - 70.0 * invScale),
-        pivot + QPointF(6.0 * invScale, - 56.5 * invScale),
-        pivot + QPointF(2.0 * invScale, - 55.0 * invScale),
-        pivot + QPointF(2.0 * invScale, - 11.0 * invScale)
-    };
-
-    mGizmos.fState.axisXGeom.center = pivot + QPointF(axisGapXWorld, 0.0);
-    mGizmos.fState.axisXGeom.size = QSizeF(axisHeightWorld, axisWidthWorld);
-    mGizmos.fState.axisXGeom.angleDeg = 0.0;
-    mGizmos.fState.axisXGeom.visible = mGizmos.fState.showPosition;
-    mGizmos.fState.axisXGeom.usePolygon = true;
-    mGizmos.fState.axisXGeom.polygonPoints = {
-        pivot + QPointF(10.0 * invScale, 0.0),
-        pivot + QPointF(11.0 * invScale, -2.0 * invScale),
-        pivot + QPointF(55.0 * invScale, -2.0 * invScale),
-        pivot + QPointF(56.5 * invScale, -6.0 * invScale),
-        pivot + QPointF(70.0 * invScale, 0.0),
-        pivot + QPointF(56.5 * invScale, 6.0 * invScale),
-        pivot + QPointF(55.0 * invScale, 2.0 * invScale),
-        pivot + QPointF(11.0 * invScale, 2.0 * invScale)
-    };
-
-    mGizmos.fState.axisUniformGeom.center = pivot + QPointF(axisGapXWorld, 0.0);
-    mGizmos.fState.axisUniformGeom.size = QSizeF(axisHeightWorld, axisWidthWorld);
-    mGizmos.fState.axisUniformGeom.visible = mGizmos.fState.showPosition;
-    mGizmos.fState.axisUniformGeom.usePolygon = true;
-    mGizmos.fState.axisUniformGeom.polygonPoints = {
-        pivot + QPointF((mGizmos.fConfig.axisUniformOffsetPx + mGizmos.fConfig.axisUniformChamferPx) * invScale , - mGizmos.fConfig.axisUniformOffsetPx * invScale),
-        pivot + QPointF(mGizmos.fConfig.axisUniformOffsetPx * invScale, - (mGizmos.fConfig.axisUniformOffsetPx + mGizmos.fConfig.axisUniformChamferPx) * invScale),
-        pivot + QPointF(mGizmos.fConfig.axisUniformOffsetPx * invScale, - (mGizmos.fConfig.axisUniformWidthPx - mGizmos.fConfig.axisUniformChamferPx) * invScale),
-        pivot + QPointF((mGizmos.fConfig.axisUniformOffsetPx + mGizmos.fConfig.axisUniformChamferPx) * invScale, - mGizmos.fConfig.axisUniformWidthPx * invScale),
-        pivot + QPointF((mGizmos.fConfig.axisUniformWidthPx - mGizmos.fConfig.axisUniformChamferPx) * invScale, - mGizmos.fConfig.axisUniformWidthPx * invScale),
-        pivot + QPointF(mGizmos.fConfig.axisUniformWidthPx * invScale, - (mGizmos.fConfig.axisUniformWidthPx - mGizmos.fConfig.axisUniformChamferPx) * invScale),
-        pivot + QPointF(mGizmos.fConfig.axisUniformWidthPx * invScale, - (mGizmos.fConfig.axisUniformOffsetPx + mGizmos.fConfig.axisUniformChamferPx) * invScale),
-        pivot + QPointF((mGizmos.fConfig.axisUniformWidthPx - mGizmos.fConfig.axisUniformChamferPx) * invScale, - mGizmos.fConfig.axisUniformOffsetPx * invScale)
-    };
-
-    mGizmos.fState.xLineGeom.start = pivot;
-    mGizmos.fState.xLineGeom.end = pivot + QPointF(xLineLengthWorld, 0.0);
-    mGizmos.fState.xLineGeom.strokeWidth = xLineStrokeWorld;
-
-    mGizmos.fState.yLineGeom.start = pivot;
-    mGizmos.fState.yLineGeom.end = pivot + QPointF(0.0, yLineLengthWorld);
-    mGizmos.fState.yLineGeom.strokeWidth = yLineStrokeWorld;
+    mGizmos.fState.rotateHandlePolygon = shapes.rotateHandlePolygon;
+    mGizmos.fState.rotateHandleHitPolygon = shapes.rotateHandleHitPolygon;
+    mGizmos.fState.rotateHandleAnchor = shapes.rotateHandleAnchor;
+    mGizmos.fState.rotateHandleRadius = shapes.rotateHandleRadius;
+    mGizmos.fState.rotateHandlePos = shapes.rotateHandlePos;
+    mGizmos.fState.axisXGeom = shapes.axisXGeom;
+    mGizmos.fState.axisYGeom = shapes.axisYGeom;
+    mGizmos.fState.axisUniformGeom = shapes.axisUniformGeom;
+    mGizmos.fState.scaleXGeom = shapes.scaleXGeom;
+    mGizmos.fState.scaleYGeom = shapes.scaleYGeom;
+    mGizmos.fState.scaleUniformGeom = shapes.scaleUniformGeom;
+    mGizmos.fState.shearXGeom = shapes.shearXGeom;
+    mGizmos.fState.shearYGeom = shapes.shearYGeom;
+    mGizmos.fState.xLineGeom = shapes.xLineGeom;
+    mGizmos.fState.yLineGeom = shapes.yLineGeom;
 
     updateLineGizmoVisibility();
-    const qreal rotateOffsetWorld = mGizmos.fState.axisYGeom.size.width() * 0.5;
-    mGizmos.fState.rotateHandleRadius = baseRotateRadiusWorld + rotateOffsetWorld;
-
-    const QPointF offset(0.0, -mGizmos.fState.rotateHandleRadius);
-    mGizmos.fState.rotateHandlePos = pivot + offset;
-
-    const qreal scaleSizeWorld = mGizmos.fConfig.scaleSizePx * invScale;
-    const qreal scaleHalf = scaleSizeWorld * 0.5;
-    const qreal scaleGapWorld = mGizmos.fConfig.scaleGapPx * invScale;
-    const qreal axisYTop = mGizmos.fState.axisYGeom.center.y() - (mGizmos.fState.axisYGeom.size.height() * 0.5);
-    const qreal axisXRight = mGizmos.fState.axisXGeom.center.x() + (mGizmos.fState.axisXGeom.size.width() * 0.5);
-    const qreal scaleCenterY = axisYTop - scaleGapWorld - scaleHalf;
-    const qreal scaleCenterX = axisXRight + scaleGapWorld + scaleHalf;
-
-    mGizmos.fState.scaleYGeom.center = QPointF(mGizmos.fState.axisYGeom.center.x(), scaleCenterY);
-    mGizmos.fState.scaleYGeom.halfExtent = scaleHalf;
-    mGizmos.fState.scaleYGeom.visible = mGizmos.fState.showScale;
-    mGizmos.fState.scaleYGeom.usePolygon = false;
-    mGizmos.fState.scaleYGeom.polygonPoints.clear();
-
-    mGizmos.fState.scaleXGeom.center = QPointF(scaleCenterX, mGizmos.fState.axisXGeom.center.y());
-    mGizmos.fState.scaleXGeom.halfExtent = scaleHalf;
-    mGizmos.fState.scaleXGeom.visible = mGizmos.fState.showScale;
-    mGizmos.fState.scaleXGeom.usePolygon = false;
-    mGizmos.fState.scaleXGeom.polygonPoints.clear();
-
-    mGizmos.fState.scaleUniformGeom.center = QPointF(scaleCenterX, scaleCenterY);
-    mGizmos.fState.scaleUniformGeom.halfExtent = scaleHalf;
-    mGizmos.fState.scaleUniformGeom.visible = mGizmos.fState.showScale;
-    mGizmos.fState.scaleUniformGeom.usePolygon = true;
-    mGizmos.fState.scaleUniformGeom.polygonPoints = {
-        QPointF(mGizmos.fState.scaleUniformGeom.center.x() - scaleHalf * 2, mGizmos.fState.scaleUniformGeom.center.y() - scaleHalf),
-        QPointF(mGizmos.fState.scaleUniformGeom.center.x() + scaleHalf, mGizmos.fState.scaleUniformGeom.center.y() - scaleHalf),
-        QPointF(mGizmos.fState.scaleUniformGeom.center.x() + scaleHalf, mGizmos.fState.scaleUniformGeom.center.y() + scaleHalf * 2),
-        QPointF(mGizmos.fState.scaleUniformGeom.center.x() - scaleHalf, mGizmos.fState.scaleUniformGeom.center.y() + scaleHalf * 2),
-        QPointF(mGizmos.fState.scaleUniformGeom.center.x() - scaleHalf, mGizmos.fState.scaleUniformGeom.center.y() + scaleHalf),
-        QPointF(mGizmos.fState.scaleUniformGeom.center.x() - scaleHalf * 2, mGizmos.fState.scaleUniformGeom.center.y() + scaleHalf)
-    };
-
-    const qreal shearRadiusWorld = mGizmos.fConfig.shearRadiusPx * invScale;
-
-    const QPointF scaleYCenter = mGizmos.fState.scaleYGeom.center;
-    const QPointF scaleXCenter = mGizmos.fState.scaleXGeom.center;
-    const QPointF scaleUniformCenter = mGizmos.fState.scaleUniformGeom.center;
-
-    mGizmos.fState.shearXGeom.center = QPointF((scaleYCenter.x() + scaleUniformCenter.x()) * 0.5,
-                                                scaleCenterY);
-    mGizmos.fState.shearXGeom.radius = shearRadiusWorld;
-    mGizmos.fState.shearXGeom.visible = mGizmos.fState.showShear;
-    mGizmos.fState.shearXGeom.usePolygon = true;
-    {
-        const qreal halfWidth = shearRadiusWorld * 1.5;
-        const qreal topHeight = shearRadiusWorld * 0.8;
-        //const qreal bottomHeight = shearRadiusWorld * 0.6;
-        const QPointF c = mGizmos.fState.shearXGeom.center;
-        mGizmos.fState.shearXGeom.polygonPoints = {
-            QPointF(c.x() - scaleHalf * 0.5 - halfWidth * 1.5, c.y()),
-            QPointF(c.x() - scaleHalf * 0.5 - halfWidth, c.y() - topHeight),
-            QPointF(c.x() - scaleHalf * 0.5 + halfWidth, c.y() - topHeight),
-            QPointF(c.x() - scaleHalf * 0.5 + halfWidth * 1.5, c.y()),
-            QPointF(c.x() - scaleHalf * 0.5 + halfWidth, c.y() + topHeight),
-            QPointF(c.x() - scaleHalf * 0.5 - halfWidth, c.y() + topHeight)
-        };
-    }
-
-    mGizmos.fState.shearYGeom.center = QPointF(scaleCenterX,
-                                 (scaleXCenter.y() + scaleUniformCenter.y()) * 0.5);
-    mGizmos.fState.shearYGeom.radius = shearRadiusWorld;
-    mGizmos.fState.shearYGeom.visible = mGizmos.fState.showShear;
-    mGizmos.fState.shearYGeom.usePolygon = true;
-    {
-        const qreal halfHeight = shearRadiusWorld * 1.5;
-        const qreal topWidth = shearRadiusWorld * 0.8;
-        //const qreal bottomWidth = shearRadiusWorld * 0.6;
-        const QPointF c = mGizmos.fState.shearYGeom.center;
-        mGizmos.fState.shearYGeom.polygonPoints = {
-            QPointF(c.x(), c.y() + scaleHalf * 0.5 - halfHeight * 1.5),
-            QPointF(c.x() + topWidth, c.y() + scaleHalf * 0.5 - halfHeight),
-            QPointF(c.x() + topWidth, c.y() + scaleHalf * 0.5 + halfHeight),
-            QPointF(c.x(), c.y() + scaleHalf * 0.5 + halfHeight * 1.5),
-            QPointF(c.x() - topWidth, c.y() + scaleHalf * 0.5 + halfHeight),
-            QPointF(c.x() - topWidth, c.y() + scaleHalf * 0.5 - halfHeight)
-        };
-    }
 
     const bool anyGizmoVisible = (mGizmos.fState.showRotate || mGizmos.fState.showPosition ||
                                   mGizmos.fState.showScale || mGizmos.fState.showShear);

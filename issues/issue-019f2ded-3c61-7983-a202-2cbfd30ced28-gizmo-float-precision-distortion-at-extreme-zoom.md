@@ -16,67 +16,167 @@ constant on-screen size regardless of canvas zoom by scaling its geometry
 by the inverse of the zoom level; at extreme zoom, the floating-point math
 for that inverse scale breaks down.
 
-## Root cause (confirmed)
+## Root cause (confirmed, reframed as architectural — see Grill Log 2026-07-06)
 
-- `Canvas::renderGizmos(SkCanvas*, qreal qInvZoom, float invZoom)`
-  (`src/core/canvasgizmos.cpp:31`) draws the whole widget (rotate handle,
-  translate arrows/axis lines, scale squares, uniform-scale polygon, shear
-  handles).
+The float32-narrowing symptom described in the original trace is real, but
+it's a downstream *consequence* of a design choice, not the root defect
+itself: the gizmo is built entirely in **scene/world coordinates**, scaled
+by the inverse of the zoom so it nets out to a constant on-screen size —
+rather than being drawn in screen/device space and simply *placed* at the
+projected pivot.
+
+Confirmed call sequence in `src/core/canvas.cpp`:
+
+- `canvas->concat(skViewTrans);` (line 310) applies the pan/zoom transform
+  (a float32 `SkMatrix`) to the canvas.
+- `renderGizmos(canvas, qInvZoom, invZoom);` (line 446) runs *after* that
+  concat and *before* the only `canvas->resetMatrix()` call in the
+  function (line 559) — so the entire gizmo is drawn while still inside
+  the world-space transform.
 - `Canvas::updateRotateHandleGeometry(qreal invScale)`
-  (`src/core/canvasgizmos.cpp:571`) computes world-space geometry for every
-  handle as `pixelConstant * invScale`, e.g.:
+  (`src/core/canvasgizmos.cpp:571`) computes every handle's shape as
+  `pixelConstant * invScale` added to the world-space `pivot`, e.g.:
   ```cpp
   const qreal axisWidthWorld = mGizmos.fConfig.axisWidthPx * invScale;   // line 644
   ```
-- The inverse-zoom value itself comes from `src/core/canvas.cpp:279-282`:
-  ```cpp
-  const qreal zoom = viewTrans.m11();
-  const qreal qInvZoom = 1/viewTrans.m11() * pixelRatio;   // line 281, qreal (double) — fine
-  const float invZoom = toSkScalar(qInvZoom);              // line 282 — narrowed to float32
-  ```
-- `renderGizmos` builds Skia paths/points using this narrowed `float`
-  (`SkScalar`), e.g. `canvasgizmos.cpp:107`:
-  ```cpp
-  toSkScalar(mGizmos.fConfig.rotateStrokePx * qInvZoom * 0.2f)
-  ```
+- `renderGizmos` then narrows those absolute world-space `qreal` points to
+  32-bit `SkScalar` when building `SkPoint`/`SkPath` geometry, e.g.
+  `canvasgizmos.cpp:107`. Skia's already-concatenated view matrix then
+  re-multiplies by `zoom` to project back to device pixels.
 
-The `1/zoom` arithmetic in `qreal` (double) does not itself become
-singular or overflow at extreme zoom. The break happens after narrowing to
-32-bit `SkScalar`: a tiny float offset (pixel-space constant times a very
-small `invZoom`) gets added to the pivot's absolute scene coordinates
-(which can be large) when building `SkPoint`/`SkPath` geometry — classic
-catastrophic cancellation / precision floor in float32 (~7 significant
-digits). No clamping exists anywhere in this path (`canvas.cpp`,
-`canvasgizmos.cpp`, `canvasmouseevents.cpp`).
+So the gizmo does two reciprocal-scaling passes (`* invZoom` then, via the
+view matrix, `* zoom`) over a potentially huge dynamic range, just to net
+out to "N screen pixels." The float32 narrowing after the first pass is
+where that round-trip actually loses the tiny offset against the large
+absolute pivot coordinate (classic catastrophic cancellation, ~7
+significant digits). No clamping exists anywhere in this path.
 
-The same `invScale`/`invZoom` convention is shared with hover-outline
-stroke width (`src/core/Boxes/boundingbox.cpp:240-259`,
-`drawHoveredSk`/`drawHoveredPathSk`) and point-handle drawing
-(`boundingbox.cpp:278-283`), and independently reimplemented for mouse hit
--testing (`src/core/canvasmouseevents.cpp:82`:
-`(1 / e.fScale) * devicePixelRatio`). Those other call sites were not
-audited for the same precision issue, but use the identical pattern and
-may be equally susceptible.
+**Corrected scope** — traced and confirmed NOT equally susceptible,
+contrary to the original draft of this issue:
+
+- Hit-testing (`pointOnRotateGizmo`, `pointOnScaleGizmo`,
+  `pointOnAxisGizmo`, `pointOnShearGizmo`, `canvasgizmos.cpp:433-460+`)
+  reads only the cached double-precision `mGizmos.fState.*Geom` fields and
+  never calls `toSkScalar()`. It stays in `qreal` end-to-end, so hit
+  areas remain accurate even when the drawn shape shatters — the
+  practical impact is "user can't see where to click," not "clicking
+  doesn't work."
+- `src/core/canvasmouseevents.cpp:82`'s independently-computed
+  `invScaleUi` only feeds that same double-precision hit-test path — not
+  vulnerable either.
+- `BoundingBox::drawHoveredSk`/`drawHoveredPathSk`
+  (`src/core/Boxes/boundingbox.cpp:240-259`) uses a different, safe
+  pattern: it draws a *relative* path (`mSkRelBoundingRectPath`) through
+  one transform matrix, using `invScale` only as a stroke-width scalar —
+  never adding a tiny offset onto a large absolute coordinate before
+  narrowing. Not the same bug.
+
+**Sibling call sites confirmed to share the actual vulnerable pattern**
+(pixel constant `* invZoom` added to an absolute world-space point, still
+inside the concatenated zoom transform, in `src/core/canvas.cpp`) — traced
+by inspection, not yet reproduced, and deliberately **out of scope for
+this issue**; tracked as a follow-up (see Next steps):
+
+- `mHoveredPoint_d->drawHovered(canvas, invZoom)` (line 542)
+- `mHoveredNormalSegment.drawHoveredSk(canvas, invZoom)` (line 545)
+- `mRotPivot->drawTransforming(...)` / `drawSk(...)` (lines 453–456)
+- `cam->drawCameraBox(canvas, invZoom, ...)` (line 441)
+- draw-path node circles (lines 459–514)
 
 ## Impact / scope
 
-Purely visual/interaction — the gizmo becomes hard or impossible to use
-accurately at extreme zoom. Does not corrupt any stored transform data.
+Purely visual — the gizmo's drawn shape distorts/breaks apart at extreme
+zoom. Hit-testing/interaction remains accurate (see corrected root cause
+above); the practical impact is that the user can't see where to click,
+not that clicks land wrong. Does not corrupt any stored transform data.
+Scoped to the transform gizmo only for this issue.
 
 ## Relevant files
 
+- `src/core/canvas.cpp:310` — `canvas->concat(skViewTrans)`, world-space transform applied before gizmo draw
+- `src/core/canvas.cpp:446` — `renderGizmos(...)` call site, still inside the world-space transform
+- `src/core/canvas.cpp:559` — the one `canvas->resetMatrix()` in this function, happens *after* gizmos are drawn
 - `src/core/canvas.cpp:279-282` — `qInvZoom`/`invZoom` computation, narrows `qreal` to `SkScalar`
 - `src/core/canvasgizmos.cpp:31` — `Canvas::renderGizmos`
 - `src/core/canvasgizmos.cpp:571` — `Canvas::updateRotateHandleGeometry`
-- `src/core/canvasgizmos.cpp:433-460+` — `pointOnRotateGizmo`/`pointOnScaleGizmo` hit-testing, same `invScale` pattern
-- `src/core/Boxes/boundingbox.cpp:240-259` — `drawHoveredSk`/`drawHoveredPathSk`, shares the convention
-- `src/core/canvasmouseevents.cpp:82` — independently reimplemented inverse-scale for hit-testing
+- `src/core/gizmos.h` — defines the `mGizmos.fState.*Geom` fields; confirmed only read within `canvasgizmos.cpp` (render + hit-test), so free to restructure without touching other files
 
-## Next steps (not yet decided)
+## Next steps (decided — see Grill Log 2026-07-06)
 
-No fix chosen yet. Likely direction: compute gizmo handle geometry in a
-local/relative coordinate space near the origin (offset-only, without
-adding to the large absolute pivot coordinate until the final device-space
-transform), rather than building absolute-coordinate float32 geometry
-directly — avoids the large-magnitude-plus-tiny-offset cancellation
-pattern.
+Architectural fix: draw the gizmo in device/screen space instead of
+world/scene space.
+
+1. Extract each handle's shape into a single source of truth: a list of
+   dimensionless pixel offsets (currently baked as literal
+   `pivot + QPointF(10.0 * invScale, ...)`-style polygons in
+   `updateRotateHandleGeometry`). Apply it two ways:
+   - hit-testing (unchanged behavior): `offset * invScale + worldPivot`
+   - rendering (new): `offset + screenPivot`, no `invScale` multiply at all
+   This avoids maintaining two copies of every handle's polygon literals.
+2. In `renderGizmos`, project the pivot to device/screen space **once**
+   per frame (single-point transform — any float32 error there is a
+   sub-pixel placement wobble, not a shape-shattering one), then bracket
+   the gizmo draw in `canvas->save()` / `canvas->resetMatrix()` / ... /
+   `canvas->restore()` and build all handle geometry from raw pixel
+   constants offset from that projected point.
+3. Add a new `lcGizmo` `QLoggingCategory` (none currently exists —
+   `canvasgizmos.cpp` has zero `qCDebug` calls; `lcCanvas` is a general
+   catch-all). Since there's no known reproduction zoom level (see Grill
+   Log), this is required, not optional: log `invZoom`, pivot, and
+   computed geometry per frame so the actual precision-loss threshold can
+   be found by zooming in during manual testing in the debug build.
+4. Add an automated unit test for the extracted pure offset-projection
+   function, asserting it stays non-degenerate at an extreme `invZoom`
+   where the old world-space math would collapse. This is the first unit
+   test in this repository — no test infrastructure exists yet (no
+   `QTest`, no `enable_testing()`/`add_test()` anywhere). Bootstrap it
+   properly via the Qt Test framework (`find_package(Qt Test)`,
+   `QTEST_MAIN`/`QTest` macros) as the project's test framework going
+   forward, rather than a minimal standalone harness.
+5. Verification is otherwise manual/visual in the debug build — no known
+   exact repro zoom/scene setup exists (discovered incidentally while
+   investigating `1148748f4eb9`, confirmed only by code trace and an
+   unrecorded eyeballed zoom level).
+6. Once this pattern is proven here, run `md-issue-track` to file a
+   separate follow-up issue for the sibling fixed-size-overlay widgets
+   listed above (hovered point, hovered normal segment, rotation pivot
+   draw, camera box, draw-path nodes) — do not expand this issue's scope
+   to cover them now.
+
+## Grill Log
+
+### 2026-07-06
+
+- Q: is the gizmo scaled to match scene coordinates before drawing (rather
+  than defined in screen coordinates and just placed)? — A: yes, confirmed
+  by tracing `canvas.cpp` (`concat(skViewTrans)` at line 310 precedes the
+  `renderGizmos` call at line 446; `resetMatrix()` only happens at line
+  559, after gizmos are drawn). This reframes the root cause from "a
+  narrowing bug" to "the wrong coordinate space entirely."
+- Q: given that, pursue the architectural fix (draw in screen space) or a
+  minimal patch (keep world-space design, reorder arithmetic to avoid
+  cancellation)? — A: architectural fix, for sure.
+- Q: the same `pixelConstant * invZoom`-added-to-absolute-world-point
+  pattern is used by several other overlays in `canvas.cpp` (hovered
+  point, hovered normal segment, rotation pivot, camera box, draw-path
+  nodes) — expand this issue's scope to cover them, or stay scoped to the
+  gizmo and track the rest separately? — A: stay scoped to the gizmo; log
+  a related follow-up issue for the others once this fix proves the
+  pattern.
+- Q: extract each handle's shape into a single dimensionless-offset
+  source of truth (applied via `*invScale` for hit-testing,
+  no-multiply for screen-space rendering), or accept duplicated polygon
+  literals between the hit-test and render paths? — A: yes, extract it.
+- Q: is there a known concrete zoom level / scene setup that reproduces
+  this? — A: no; discovered incidentally while investigating
+  `1148748f4eb9`, confirmed by code trace, only eyeballed at an unrecorded
+  zoom. Visual confirmation will suffice for verifying the fix, which
+  makes the new `lcGizmo` logging category required (not optional) —
+  it's how the actual precision-loss threshold will get found.
+- Q: do you want an automated unit test for the extracted pure
+  offset-projection function, or is manual visual confirmation enough? —
+  A: yes, add a unit test.
+- Q: since this repo has zero existing test infrastructure, how should
+  that test be wired up (minimal CTest target, Qt Test framework, or an
+  unwired standalone debug tool)? — A: Qt Test framework — adopt it
+  properly as the project's test framework going forward.

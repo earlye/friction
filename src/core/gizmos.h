@@ -105,6 +105,30 @@ namespace Friction
                 bool visible = false;
             };
 
+            // Every handle's shape, expressed relative to `origin` and scaled by `scale`.
+            // Callers use this two ways: scale=invZoom/origin=world-pivot reproduces the
+            // existing world-space geometry (used for hit-testing); scale=1/origin=the
+            // pivot already projected to device space produces screen-space geometry safe
+            // to narrow to SkScalar without catastrophic cancellation (used for rendering).
+            struct Shapes
+            {
+                QVector<QPointF> rotateHandlePolygon;
+                QVector<QPointF> rotateHandleHitPolygon;
+                QPointF rotateHandleAnchor;
+                qreal rotateHandleRadius = 0.0;
+                QPointF rotateHandlePos;
+                AxisGeometry axisXGeom;
+                AxisGeometry axisYGeom;
+                AxisGeometry axisUniformGeom;
+                ScaleGeometry scaleXGeom;
+                ScaleGeometry scaleYGeom;
+                ScaleGeometry scaleUniformGeom;
+                ShearGeometry shearXGeom;
+                ShearGeometry shearYGeom;
+                LineGeometry xLineGeom;
+                LineGeometry yLineGeom;
+            };
+
             struct Config
             {
                 qreal rotateSweepDeg = 90.0; // default sweep of gizmo arc
@@ -149,6 +173,7 @@ namespace Friction
             struct State
             {
                 bool rotateHandleVisible = false;
+                QPointF pivot; // resolved world-space pivot, cached for renderGizmos to project to screen space
                 QPointF rotateHandlePos;
                 QPointF rotateHandleAnchor;
                 qreal rotateHandleRadius = 0;
@@ -190,6 +215,16 @@ namespace Friction
                 bool rotatingFromHandle = false;
                 bool visible = true;
             };
+
+            // Pure shape math, no Canvas/QObject dependency — usable directly from a
+            // Qt Test target without constructing a Canvas.
+            static Shapes buildShapes(const Config &config,
+                                      bool showRotate,
+                                      bool showPosition,
+                                      bool showScale,
+                                      bool showShear,
+                                      qreal scale,
+                                      const QPointF &origin);
 
             Config fConfig;
             Theme fTheme;
