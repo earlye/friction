@@ -50,17 +50,14 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
     // pixels (see CanvasWindow::fitCanvasToSize), while the config's "Px" constants are
     // logical-pixel sizes, hence the devicePixelRatio factor here.
     //
-    // mDevicePixelRatio is this window's own DPR (set by CanvasWindow::renderSk via
-    // setWorldToScreen) — not qApp->devicePixelRatio(), which returns the highest DPR
-    // across *all* connected screens and would be wrong for this window on a mixed-DPI
-    // multi-monitor setup. Only fall back to qApp's global value on the (paint-time-
-    // unreachable in practice) case where setWorldToScreen hasn't run yet.
-    qreal pixelRatio = mDevicePixelRatio;
-    if (!mHasWorldToScreen) {
-        pixelRatio = qApp ? qApp->devicePixelRatio() : 1.0;
-        qCWarning(lcGizmo) << "renderGizmos: no world-to-screen transform yet, falling back to"
-                           << "qApp->devicePixelRatio() =" << pixelRatio;
-    }
+    // mDevicePixelRatio is this window's own DPR, set unconditionally by
+    // CanvasWindow::renderSk via setWorldToScreen before every call here (its only
+    // caller) — safe to read directly, including when the world-to-screen transform
+    // itself is non-invertible (mHasWorldToScreen false, e.g. at extreme zoom-out):
+    // that only affects invertibility, not this value. qApp->devicePixelRatio() would
+    // be wrong here regardless, since it returns the highest DPR across all connected
+    // screens, not this window's own.
+    const qreal pixelRatio = mDevicePixelRatio;
     const SkPoint skPivot = SkPoint::Make(toSkScalar(mGizmos.fState.pivot.x()),
                                           toSkScalar(mGizmos.fState.pivot.y()));
     SkPoint skScreenPivot;
