@@ -49,7 +49,9 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
     // cancellation at extreme zoom. The SkCanvas surface is sized in physical device
     // pixels (see CanvasWindow::fitCanvasToSize), while the config's "Px" constants are
     // logical-pixel sizes, hence the devicePixelRatio factor here.
-    const qreal pixelRatio = qApp ? qApp->devicePixelRatio() : 1.0;
+    qreal pixelRatio = 1.0;
+    if (qApp) { pixelRatio = qApp->devicePixelRatio(); }
+    else { qCWarning(lcGizmo) << "renderGizmos: no QApplication instance, defaulting devicePixelRatio to 1.0"; }
     const SkPoint skPivot = SkPoint::Make(toSkScalar(mGizmos.fState.pivot.x()),
                                           toSkScalar(mGizmos.fState.pivot.y()));
     SkPoint skScreenPivot;
@@ -202,7 +204,7 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
             SkPaint borderPaint;
             borderPaint.setAntiAlias(true);
             borderPaint.setStyle(SkPaint::kStroke_Style);
-            borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * 0.2f));
+            borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * pixelRatio * 0.2f));
 
             const int borderLighten = hovered ? mGizmos.fTheme.colorLightenHover : mGizmos.fTheme.colorLightenNormal;
             QColor borderColor = color.darker(borderLighten);
@@ -272,7 +274,7 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
             SkPaint borderPaint;
             borderPaint.setAntiAlias(true);
             borderPaint.setStyle(SkPaint::kStroke_Style);
-            borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * 0.2f));
+            borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * pixelRatio * 0.2f));
             const int borderLighten = hovered ? mGizmos.fTheme.colorLightenHover : mGizmos.fTheme.colorLightenNormal;
             QColor borderColor = color.darker(borderLighten);
             const qreal strokeAlphaScale = hovered ? mGizmos.fTheme.colorAlphaStrokeHover : mGizmos.fTheme.colorAlphaStrokeNormal;
@@ -325,7 +327,7 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
             SkPaint borderPaint;
             borderPaint.setAntiAlias(true);
             borderPaint.setStyle(SkPaint::kStroke_Style);
-            borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * 0.2f));
+            borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * pixelRatio * 0.2f));
             const int borderLighten = hovered ? mGizmos.fTheme.colorLightenHover : mGizmos.fTheme.colorLightenNormal;
             QColor borderColor = color.darker(borderLighten);
             const qreal strokeAlphaShear = hovered ? mGizmos.fTheme.colorAlphaStrokeHover : mGizmos.fTheme.colorAlphaStrokeNormal;
