@@ -8,6 +8,12 @@
 Use `just build-debug` when iterating on code changes. Use `just build-mac-arm` for release/packaging.
 
 Please keep earlye-fork.md updated as new features are built and introduced.
+Every new entry (bug fix or feature) must also carry upstream-PR-status
+tracking at the time it's added: an `Upstream` column value for Bug
+Fixes table rows, or an `**Upstream:** ...` summary line for New
+Features sections. Use one of: `won't PR`, `need PR`, `PR up#n`,
+`PR up#n (merged)`, `PR up#n (rejected)` — see earlye-fork.md's Bug
+Fixes section intro for the full convention.
 
 ## Starting Work on an Issue
 
@@ -27,6 +33,9 @@ Please keep earlye-fork.md updated as new features are built and introduced.
 ## Pull Requests
 
 - Always create PRs against the fork (`earlye/friction`), never against the upstream (`friction2d/friction`).
+- When reporting that you've pushed to or created a PR, hyperlink the
+  PR reference (e.g. `[PR #88](https://github.com/earlye/friction/pull/88)`)
+  instead of writing a bare `PR #88`, so it's clickable.
 
 ## Pulling Upstream Changes
 
