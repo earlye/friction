@@ -250,7 +250,7 @@ every merge to `main`.
 The timeline now renders the decoded audio waveform behind clip
 regions, giving visual tempo cues for keyframe placement.
 
-**Upstream:** needs PR — adds obvious value; needs extension to
+**Upstream:** [needs PR](issues/issue-019f3860-558f-7af3-b118-a8f43b739106-upstream-pr-audio-waveform.md) — adds obvious value; needs extension to
 waveforms for embedded videos or midi (if supported) too.
 
 #### History
@@ -288,7 +288,7 @@ Playback on windows appears to drop the frame cache, resulting in
 audio with a black display. Currently being worked in
 [#52](https://github.com/earlye/friction/pull/52)
 
-**Upstream:** need PR — root cause is in core
+**Upstream:** [need PR](issues/issue-019f3860-5597-74f0-9a24-c79849d5ee75-upstream-pr-windows-playback-cache.md) — root cause is in core
 `Canvas`/`HddCachableCacheHandler`/`VideoEncoder` cache-eviction
 handling, not fork-added code
 
@@ -362,16 +362,16 @@ links, which are all `earlye/friction` fork PR numbers.
 
 | # | Fix | Origin | Upstream |
 |---|-----|--------|----------|
-| [#66](https://github.com/earlye/friction/pull/66) | Fix SVG stroke-width import: style-parsed widths were reset when the direct attribute was absent; element transform scale was double-applied (once at import, once at render) | pre-existing — bugs were in upstream `BoxSvgAttributes::loadBoundingBoxAttributes` | need PR |
-| [#82](https://github.com/earlye/friction/pull/82) | Fix SVG import/link silently ignoring `display:none`/`visibility:hidden`: values were parsed but discarded as no-ops, so hidden groups/layers (including nested Inkscape layers) always rendered visible | pre-existing — bug was in upstream `BoxSvgAttributes::loadBoundingBoxAttributes` | need PR |
+| [#66](https://github.com/earlye/friction/pull/66) | Fix SVG stroke-width import: style-parsed widths were reset when the direct attribute was absent; element transform scale was double-applied (once at import, once at render) | pre-existing — bugs were in upstream `BoxSvgAttributes::loadBoundingBoxAttributes` | [need PR](issues/issue-019f3860-559e-7f73-bf38-dfcf74542e53-upstream-pr-svg-stroke-width-import.md) |
+| [#82](https://github.com/earlye/friction/pull/82) | Fix SVG import/link silently ignoring `display:none`/`visibility:hidden`: values were parsed but discarded as no-ops, so hidden groups/layers (including nested Inkscape layers) always rendered visible | pre-existing — bug was in upstream `BoxSvgAttributes::loadBoundingBoxAttributes` | [need PR](issues/issue-019f3860-55a9-7b11-885f-d995c629933b-upstream-pr-svg-display-none-import.md) |
 | [#83](https://github.com/earlye/friction/pull/83) | Fix #82's display:none fix baking hidden state into every descendant of a hidden ancestor at import, which permanently broke SVG flipbook pages (authored as Inkscape layers saved `display:none` on all-but-the-edited layer) since the flipbook only toggles the page container's own visibility | fork-introduced — regression from fork's own #82 | won't PR |
 
 ### Compiler Warnings
 
 | # | Fix | Origin | Upstream |
 |---|-----|--------|----------|
-| [#11](https://github.com/earlye/friction/pull/11) | Fix `-Winconsistent-missing-override` warning in SvgLinkBox | pre-existing — warning was in existing upstream SvgLinkBox | need PR |
-| [#17](https://github.com/earlye/friction/pull/17) | Fix `-Wunused-but-set-variable` warnings across codebase | pre-existing — warnings were in existing upstream code | need PR |
+| [#11](https://github.com/earlye/friction/pull/11) | Fix `-Winconsistent-missing-override` warning in SvgLinkBox | pre-existing — warning was in existing upstream SvgLinkBox | [need PR](issues/issue-019f3860-55b3-7383-a0ba-51de6cea5f1d-upstream-pr-inconsistent-missing-override.md) |
+| [#17](https://github.com/earlye/friction/pull/17) | Fix `-Wunused-but-set-variable` warnings across codebase | pre-existing — warnings were in existing upstream code | [need PR](issues/issue-019f3860-55bb-7943-ac81-f24a9429b3d9-upstream-pr-unused-but-set-variable.md) |
 
 ### Developer Tooling
 
