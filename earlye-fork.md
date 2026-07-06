@@ -250,7 +250,8 @@ every merge to `main`.
 The timeline now renders the decoded audio waveform behind clip
 regions, giving visual tempo cues for keyframe placement.
 
-**Upstream:** won't PR — fork-specific feature
+**Upstream:** needs PR — adds obvious value; needs extension to
+waveforms for embedded videos or midi (if supported) too.
 
 #### History
 
@@ -287,7 +288,9 @@ Playback on windows appears to drop the frame cache, resulting in
 audio with a black display. Currently being worked in
 [#52](https://github.com/earlye/friction/pull/52)
 
-**Upstream:** need PR — root cause is in core `Canvas`/`HddCachableCacheHandler`/`VideoEncoder` cache-eviction handling, not fork-added code
+**Upstream:** need PR — root cause is in core
+`Canvas`/`HddCachableCacheHandler`/`VideoEncoder` cache-eviction
+handling, not fork-added code
 
 ## Bug Fixes
 
@@ -324,7 +327,7 @@ links, which are all `earlye/friction` fork PR numbers.
 |---|-----|--------|----------|
 | [#15](https://github.com/earlye/friction/pull/15) | Fix render output hang: suppress `mStateId++` during output rendering | likely fork-introduced — render pipeline was modified by SvgElementTrack work | won't PR |
 | [#19](https://github.com/earlye/friction/pull/19) | Fix preview black screen: suppress `mStateId++` during preview rendering | likely fork-introduced — same render pipeline changes | won't PR |
-| [#18](https://github.com/earlye/friction/pull/18) | Fix crash in VideoEncoder: `sws` context dimension mismatch and image use-after-free | pre-existing — bug was in the existing upstream VideoEncoder code | need PR |
+| [#18](https://github.com/earlye/friction/pull/18) | Fix crash in VideoEncoder: `sws` context dimension mismatch and image use-after-free | pre-existing — bug was in the existing upstream VideoEncoder code | PR up#765 (merged) |
 | [#53](https://github.com/earlye/friction/pull/53) | Fix re-render doing nothing after first render completes | likely fork-introduced — render state management changed by animation work | won't PR |
 
 ### Camera / Viewport
