@@ -119,6 +119,8 @@ Here are the `kind`s introduced so far:
     - `controller` the `id` or `inkscape:label` of the element whose
       transform this element should follow.
 
+**Upstream:** won't PR — fork-specific feature
+
 #### History
 
 - [#4](https://github.com/earlye/friction/pull/4): per-element
@@ -153,6 +155,8 @@ toggles between "look through camera" and "look at world."
 
 ![friction screenshot](earlye-fork/example-cameras.jpg)
 
+**Upstream:** won't PR — fork-specific feature
+
 #### History
 
 - [#29](https://github.com/earlye/friction/pull/29): `CameraBox`,
@@ -174,6 +178,8 @@ entirely. This fork hardens locking so it is fully enforced:
   give immediate visual feedback explaining why the operation was
   rejected
 
+**Upstream:** won't PR — fork-specific feature
+
 #### History
 
 - [#35](https://github.com/earlye/friction/pull/35): flash lock icon
@@ -189,6 +195,8 @@ entirely. This fork hardens locking so it is fully enforced:
 Remapped frame-level editing operations to match common animation tool
 conventions.
 
+**Upstream:** won't PR — fork-specific feature
+
 #### History
 
 - [#39](https://github.com/earlye/friction/pull/39): Add Keyframe →
@@ -201,6 +209,8 @@ Replaced `qDebug()` throughout the codebase with categorized
 `QT_LOGGING_RULES`. Previously, debug output was either all-on or
 all-off.
 
+**Upstream:** won't PR — fork-specific feature
+
 #### History
 
 - [#16](https://github.com/earlye/friction/pull/16): replace
@@ -210,6 +220,8 @@ all-off.
 
 Switched to SemVer 2.0 build metadata (`X.Y.Z+build.N`) to give every
 CI artifact a unique, sortable version string.
+
+**Upstream:** won't PR — fork-specific feature
 
 #### History
 
@@ -221,6 +233,8 @@ CI artifact a unique, sortable version string.
 Added macOS and Linux CI workflows and a release pipeline that builds
 all platform artifacts and publishes a GitHub release automatically on
 every merge to `main`.
+
+**Upstream:** won't PR — fork-specific feature
 
 #### History
 
@@ -236,6 +250,8 @@ every merge to `main`.
 The timeline now renders the decoded audio waveform behind clip
 regions, giving visual tempo cues for keyframe placement.
 
+**Upstream:** won't PR — fork-specific feature
+
 #### History
 
 - [#56](https://github.com/earlye/friction/pull/56): audio waveform
@@ -247,6 +263,8 @@ A `Justfile` was added to make macOS builds and debug sessions usable
 without manual CMake invocations (`just build-debug`, `just
 build-mac-arm`), along with tooling for symbol indexing and Claude
 Code worktree sessions.
+
+**Upstream:** won't PR — fork-specific feature
 
 #### History
 
@@ -269,6 +287,8 @@ Playback on windows appears to drop the frame cache, resulting in
 audio with a black display. Currently being worked in
 [#52](https://github.com/earlye/friction/pull/52)
 
+**Upstream:** need PR — root cause is in core `Canvas`/`HddCachableCacheHandler`/`VideoEncoder` cache-eviction handling, not fork-added code
+
 ## Bug Fixes
 
 Bug entries are annotated with their likely origin:
@@ -276,76 +296,85 @@ Bug entries are annotated with their likely origin:
 changes; **[pre-existing]** means the bug was present in upstream code
 before the fork.
 
+Each entry also tracks its status toward an independent upstream PR
+against [friction2d/friction](https://github.com/friction2d/friction),
+in the `Upstream` column: `won't PR` (fork-specific, not applicable
+upstream), `need PR` (should be PR'd upstream, not yet done),
+`PR up#n` (upstream PR opened), `PR up#n (merged)`, or
+`PR up#n (rejected)`. The `up#n` numbering refers to a
+`friction2d/friction` PR number, distinct from this document's `#n`
+links, which are all `earlye/friction` fork PR numbers.
+
 ### CI / Build
 
-| # | Fix | Origin |
-|---|-----|--------|
-| [#3](https://github.com/earlye/friction/pull/3) | Fix macOS CI not running on `main` branch pushes | fork-introduced — CI workflow was added by this fork |
-| [#6](https://github.com/earlye/friction/pull/6) | Fix Linux CI for push events and branch names containing `+` | fork-introduced — Linux CI workflow was added by this fork |
-| [#12](https://github.com/earlye/friction/pull/12) | Restrict CI push triggers to `main`; eliminate duplicate PR builds | fork-introduced — trigger logic was set up by this fork |
-| [#26](https://github.com/earlye/friction/pull/26) | Fix reusable workflow concurrency groups cancelling release builds | fork-introduced — release workflow was added by this fork |
-| [#27](https://github.com/earlye/friction/pull/27) | Fix Linux/macOS sharing same concurrency group within a release run | fork-introduced — same |
-| [#28](https://github.com/earlye/friction/pull/28) | Fix release artifact glob: Linux artifact has a version subdirectory | fork-introduced — same |
-| [#42](https://github.com/earlye/friction/pull/42) | Fix shallow checkout causing wrong commit count in build version | fork-introduced — SemVer CI setup introduced the shallow-clone assumption |
-| [#43](https://github.com/earlye/friction/pull/43) | Optimize CI: SDK/Docker caching, `MKJOBS=4`, DMG arch naming, 7z `-mx5` | fork-introduced — CI infrastructure owned by this fork |
+| # | Fix | Origin | Upstream |
+|---|-----|--------|----------|
+| [#3](https://github.com/earlye/friction/pull/3) | Fix macOS CI not running on `main` branch pushes | fork-introduced — CI workflow was added by this fork | won't PR |
+| [#6](https://github.com/earlye/friction/pull/6) | Fix Linux CI for push events and branch names containing `+` | fork-introduced — Linux CI workflow was added by this fork | won't PR |
+| [#12](https://github.com/earlye/friction/pull/12) | Restrict CI push triggers to `main`; eliminate duplicate PR builds | fork-introduced — trigger logic was set up by this fork | won't PR |
+| [#26](https://github.com/earlye/friction/pull/26) | Fix reusable workflow concurrency groups cancelling release builds | fork-introduced — release workflow was added by this fork | won't PR |
+| [#27](https://github.com/earlye/friction/pull/27) | Fix Linux/macOS sharing same concurrency group within a release run | fork-introduced — same | won't PR |
+| [#28](https://github.com/earlye/friction/pull/28) | Fix release artifact glob: Linux artifact has a version subdirectory | fork-introduced — same | won't PR |
+| [#42](https://github.com/earlye/friction/pull/42) | Fix shallow checkout causing wrong commit count in build version | fork-introduced — SemVer CI setup introduced the shallow-clone assumption | won't PR |
+| [#43](https://github.com/earlye/friction/pull/43) | Optimize CI: SDK/Docker caching, `MKJOBS=4`, DMG arch naming, 7z `-mx5` | fork-introduced — CI infrastructure owned by this fork | won't PR |
 
 ### Rendering / Playback
 
-| # | Fix | Origin |
-|---|-----|--------|
-| [#15](https://github.com/earlye/friction/pull/15) | Fix render output hang: suppress `mStateId++` during output rendering | likely fork-introduced — render pipeline was modified by SvgElementTrack work |
-| [#19](https://github.com/earlye/friction/pull/19) | Fix preview black screen: suppress `mStateId++` during preview rendering | likely fork-introduced — same render pipeline changes |
-| [#18](https://github.com/earlye/friction/pull/18) | Fix crash in VideoEncoder: `sws` context dimension mismatch and image use-after-free | pre-existing — bug was in the existing upstream VideoEncoder code |
-| [#53](https://github.com/earlye/friction/pull/53) | Fix re-render doing nothing after first render completes | likely fork-introduced — render state management changed by animation work |
+| # | Fix | Origin | Upstream |
+|---|-----|--------|----------|
+| [#15](https://github.com/earlye/friction/pull/15) | Fix render output hang: suppress `mStateId++` during output rendering | likely fork-introduced — render pipeline was modified by SvgElementTrack work | won't PR |
+| [#19](https://github.com/earlye/friction/pull/19) | Fix preview black screen: suppress `mStateId++` during preview rendering | likely fork-introduced — same render pipeline changes | won't PR |
+| [#18](https://github.com/earlye/friction/pull/18) | Fix crash in VideoEncoder: `sws` context dimension mismatch and image use-after-free | pre-existing — bug was in the existing upstream VideoEncoder code | need PR |
+| [#53](https://github.com/earlye/friction/pull/53) | Fix re-render doing nothing after first render completes | likely fork-introduced — render state management changed by animation work | won't PR |
 
 ### Camera / Viewport
 
-| # | Fix | Origin |
-|---|-----|--------|
-| [#31](https://github.com/earlye/friction/pull/31) | Fix camera box drawn at wrong position when camera is active viewport | fork-introduced - this is a fork feature |
-| [#38](https://github.com/earlye/friction/pull/38) | Fix C-toggle clip state ignored when camera is active | fork-introduced |
-| [#41](https://github.com/earlye/friction/pull/41) | Fix active camera box hover/selection in canvas viewport | fork-introduced |
-| [#46](https://github.com/earlye/friction/pull/46) | Fix double camera transform on SvgElementTrack elements after timeline scrub | fork-introduced |
+| # | Fix | Origin | Upstream |
+|---|-----|--------|----------|
+| [#31](https://github.com/earlye/friction/pull/31) | Fix camera box drawn at wrong position when camera is active viewport | fork-introduced - this is a fork feature | won't PR |
+| [#38](https://github.com/earlye/friction/pull/38) | Fix C-toggle clip state ignored when camera is active | fork-introduced | won't PR |
+| [#41](https://github.com/earlye/friction/pull/41) | Fix active camera box hover/selection in canvas viewport | fork-introduced | won't PR |
+| [#46](https://github.com/earlye/friction/pull/46) | Fix double camera transform on SvgElementTrack elements after timeline scrub | fork-introduced | won't PR |
 
 ### SvgElementTrack / Flipbook
 
-| # | Fix | Origin |
-|---|-----|--------|
-| [#20](https://github.com/earlye/friction/pull/20) | Fix FlipBook `<desc>` index: use step-function instead of interpolation | fork-introduced — flipbook track is a fork feature |
-| [#24](https://github.com/earlye/friction/pull/24) | Fix `kind:pivot` not taking effect due to deferred center-pivot overwrite | fork-introduced — `kind:pivot` is a fork feature |
-| [#30](https://github.com/earlye/friction/pull/30) | Fix SvgElementTrack `syncToTarget` accumulating stale keyframes | fork-introduced — SvgElementTrack is a fork feature |
-| [#32](https://github.com/earlye/friction/pull/32) | Fix SvgElementTrack including transform effects in animation track tree | fork-introduced — same |
-| [#48](https://github.com/earlye/friction/pull/48) | Fix flipbook index field not triggering canvas redraw on edit | fork-introduced — same |
-| [#55](https://github.com/earlye/friction/pull/55) | Fix flipbook page lookup ignoring `inkscape:label` when `id` is absent | fork-introduced — same |
-| [#67](https://github.com/earlye/friction/pull/67) | Fix flipbook track names preferring `id` over `inkscape:label` | fork-introduced — same |
+| # | Fix | Origin | Upstream |
+|---|-----|--------|----------|
+| [#20](https://github.com/earlye/friction/pull/20) | Fix FlipBook `<desc>` index: use step-function instead of interpolation | fork-introduced — flipbook track is a fork feature | won't PR |
+| [#24](https://github.com/earlye/friction/pull/24) | Fix `kind:pivot` not taking effect due to deferred center-pivot overwrite | fork-introduced — `kind:pivot` is a fork feature | won't PR |
+| [#30](https://github.com/earlye/friction/pull/30) | Fix SvgElementTrack `syncToTarget` accumulating stale keyframes | fork-introduced — SvgElementTrack is a fork feature | won't PR |
+| [#32](https://github.com/earlye/friction/pull/32) | Fix SvgElementTrack including transform effects in animation track tree | fork-introduced — same | won't PR |
+| [#48](https://github.com/earlye/friction/pull/48) | Fix flipbook index field not triggering canvas redraw on edit | fork-introduced — same | won't PR |
+| [#55](https://github.com/earlye/friction/pull/55) | Fix flipbook page lookup ignoring `inkscape:label` when `id` is absent | fork-introduced — same | won't PR |
+| [#67](https://github.com/earlye/friction/pull/67) | Fix flipbook track names preferring `id` over `inkscape:label` | fork-introduced — same | won't PR |
 
 ### Lock System
 
-| # | Fix | Origin |
-|---|-----|--------|
-| [#36](https://github.com/earlye/friction/pull/36), [#37](https://github.com/earlye/friction/pull/37) | Fix locked entity children allowing slider drag and manual typing | fork-introduced — enhanced locking UX is a fork feature |
-| [#47](https://github.com/earlye/friction/pull/47) | Fix keyframe deletion and movement ignoring object lock state | fork-introduced — same |
+| # | Fix | Origin | Upstream |
+|---|-----|--------|----------|
+| [#36](https://github.com/earlye/friction/pull/36), [#37](https://github.com/earlye/friction/pull/37) | Fix locked entity children allowing slider drag and manual typing | fork-introduced — enhanced locking UX is a fork feature | won't PR |
+| [#47](https://github.com/earlye/friction/pull/47) | Fix keyframe deletion and movement ignoring object lock state | fork-introduced — same | won't PR |
 
 ### SVG Import
 
-| # | Fix | Origin |
-|---|-----|--------|
-| [#66](https://github.com/earlye/friction/pull/66) | Fix SVG stroke-width import: style-parsed widths were reset when the direct attribute was absent; element transform scale was double-applied (once at import, once at render) | pre-existing — bugs were in upstream `BoxSvgAttributes::loadBoundingBoxAttributes` |
-| [#82](https://github.com/earlye/friction/pull/82) | Fix SVG import/link silently ignoring `display:none`/`visibility:hidden`: values were parsed but discarded as no-ops, so hidden groups/layers (including nested Inkscape layers) always rendered visible | pre-existing — bug was in upstream `BoxSvgAttributes::loadBoundingBoxAttributes` |
-| [#83](https://github.com/earlye/friction/pull/83) | Fix #82's display:none fix baking hidden state into every descendant of a hidden ancestor at import, which permanently broke SVG flipbook pages (authored as Inkscape layers saved `display:none` on all-but-the-edited layer) since the flipbook only toggles the page container's own visibility | fork-introduced — regression from fork's own #82 |
+| # | Fix | Origin | Upstream |
+|---|-----|--------|----------|
+| [#66](https://github.com/earlye/friction/pull/66) | Fix SVG stroke-width import: style-parsed widths were reset when the direct attribute was absent; element transform scale was double-applied (once at import, once at render) | pre-existing — bugs were in upstream `BoxSvgAttributes::loadBoundingBoxAttributes` | need PR |
+| [#82](https://github.com/earlye/friction/pull/82) | Fix SVG import/link silently ignoring `display:none`/`visibility:hidden`: values were parsed but discarded as no-ops, so hidden groups/layers (including nested Inkscape layers) always rendered visible | pre-existing — bug was in upstream `BoxSvgAttributes::loadBoundingBoxAttributes` | need PR |
+| [#83](https://github.com/earlye/friction/pull/83) | Fix #82's display:none fix baking hidden state into every descendant of a hidden ancestor at import, which permanently broke SVG flipbook pages (authored as Inkscape layers saved `display:none` on all-but-the-edited layer) since the flipbook only toggles the page container's own visibility | fork-introduced — regression from fork's own #82 | won't PR |
 
 ### Compiler Warnings
 
-| # | Fix | Origin |
-|---|-----|--------|
-| [#11](https://github.com/earlye/friction/pull/11) | Fix `-Winconsistent-missing-override` warning in SvgLinkBox | pre-existing — warning was in existing upstream SvgLinkBox |
-| [#17](https://github.com/earlye/friction/pull/17) | Fix `-Wunused-but-set-variable` warnings across codebase | pre-existing — warnings were in existing upstream code |
+| # | Fix | Origin | Upstream |
+|---|-----|--------|----------|
+| [#11](https://github.com/earlye/friction/pull/11) | Fix `-Winconsistent-missing-override` warning in SvgLinkBox | pre-existing — warning was in existing upstream SvgLinkBox | need PR |
+| [#17](https://github.com/earlye/friction/pull/17) | Fix `-Wunused-but-set-variable` warnings across codebase | pre-existing — warnings were in existing upstream code | need PR |
 
 ### Developer Tooling
 
-| # | Fix | Origin |
-|---|-----|--------|
-| [#45](https://github.com/earlye/friction/pull/45) | Fix `just index` to use Homebrew `universal-ctags` on macOS | fork-introduced — `just index` recipe is a fork addition |
-| [#51](https://github.com/earlye/friction/pull/51) | Set tmux window name in `start-worktree` recipe | fork-introduced — recipe is a fork addition |
-| [#54](https://github.com/earlye/friction/pull/54) | Fix `just index` recipe handling stale CodeGraph state | fork-introduced — same |
-| [c18c4e6](https://github.com/earlye/friction/commit/c18c4e640) | Fix Justfile | fork-introduced — Justfile is a fork addition |
+| # | Fix | Origin | Upstream |
+|---|-----|--------|----------|
+| [#45](https://github.com/earlye/friction/pull/45) | Fix `just index` to use Homebrew `universal-ctags` on macOS | fork-introduced — `just index` recipe is a fork addition | won't PR |
+| [#51](https://github.com/earlye/friction/pull/51) | Set tmux window name in `start-worktree` recipe | fork-introduced — recipe is a fork addition | won't PR |
+| [#54](https://github.com/earlye/friction/pull/54) | Fix `just index` recipe handling stale CodeGraph state | fork-introduced — same | won't PR |
+| [c18c4e6](https://github.com/earlye/friction/commit/c18c4e640) | Fix Justfile | fork-introduced — Justfile is a fork addition | won't PR |

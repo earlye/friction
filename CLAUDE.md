@@ -8,6 +8,12 @@
 Use `just build-debug` when iterating on code changes. Use `just build-mac-arm` for release/packaging.
 
 Please keep earlye-fork.md updated as new features are built and introduced.
+Every new entry (bug fix or feature) must also carry upstream-PR-status
+tracking at the time it's added: an `Upstream` column value for Bug
+Fixes table rows, or an `**Upstream:** ...` summary line for New
+Features sections. Use one of: `won't PR`, `need PR`, `PR up#n`,
+`PR up#n (merged)`, `PR up#n (rejected)` — see earlye-fork.md's Bug
+Fixes section intro for the full convention.
 
 ## Starting Work on an Issue
 
