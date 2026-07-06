@@ -33,6 +33,9 @@ Fixes section intro for the full convention.
 ## Pull Requests
 
 - Always create PRs against the fork (`earlye/friction`), never against the upstream (`friction2d/friction`).
+- When reporting that you've pushed to or created a PR, hyperlink the
+  PR reference (e.g. `[PR #88](https://github.com/earlye/friction/pull/88)`)
+  instead of writing a bare `PR #88`, so it's clickable.
 
 ## Pulling Upstream Changes
 
