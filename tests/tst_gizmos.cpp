@@ -78,15 +78,29 @@ void TstGizmos::worldSpaceOffsetsCollapseAtExtremeZoom()
     QVERIFY(shapes.axisYGeom.polygonPoints.size() >= 3);
     QCOMPARE(countDistinctPoints(shapes.axisYGeom.polygonPoints), 8);
 
-    QVector<QPointF> narrowed;
+    QVector<QPointF> narrowedAxis;
     for (const QPointF &pt : shapes.axisYGeom.polygonPoints) {
-        narrowed.append(narrowToFloat32(pt));
+        narrowedAxis.append(narrowToFloat32(pt));
     }
 
     // Every offset (a few tens of pixels times a 1e-8 invScale) is far below
     // float32's precision floor relative to a pivot of magnitude 1000 — they
     // all collapse onto the same point once narrowed, exactly like the bug.
-    QCOMPARE(countDistinctPoints(narrowed), 1);
+    QCOMPARE(countDistinctPoints(narrowedAxis), 1);
+
+    // The rotate-handle arc reaches its geometry through a materially different
+    // path (an anchor offset, then trig applied to a scaled radius) — check it
+    // collapses too, so a fix that only touches the axis-rectangle math wouldn't
+    // pass this test while still leaving the rotate handle broken.
+    QVERIFY(shapes.rotateHandlePolygon.size() >= 3);
+    QVector<QPointF> narrowedRotate;
+    for (const QPointF &pt : shapes.rotateHandlePolygon) {
+        narrowedRotate.append(narrowToFloat32(pt));
+    }
+    QCOMPARE(countDistinctPoints(narrowedRotate), 1);
+
+    // The axis lines collapse too: end = origin + length*scale, start = origin.
+    QCOMPARE(narrowToFloat32(shapes.yLineGeom.start), narrowToFloat32(shapes.yLineGeom.end));
 }
 
 void TstGizmos::screenSpaceOffsetsSurviveExtremeZoom()
@@ -100,14 +114,24 @@ void TstGizmos::screenSpaceOffsetsSurviveExtremeZoom()
     QVERIFY(shapes.axisYGeom.polygonPoints.size() >= 3);
     QCOMPARE(countDistinctPoints(shapes.axisYGeom.polygonPoints), 8);
 
-    QVector<QPointF> narrowed;
+    QVector<QPointF> narrowedAxis;
     for (const QPointF &pt : shapes.axisYGeom.polygonPoints) {
-        narrowed.append(narrowToFloat32(pt));
+        narrowedAxis.append(narrowToFloat32(pt));
     }
 
     // Screen-space geometry never multiplies by invScale at all, so the shape
     // survives narrowing intact no matter how extreme the underlying zoom was.
-    QCOMPARE(countDistinctPoints(narrowed), 8);
+    QCOMPARE(countDistinctPoints(narrowedAxis), 8);
+
+    QVERIFY(shapes.rotateHandlePolygon.size() >= 3);
+    const int rawRotateDistinct = countDistinctPoints(shapes.rotateHandlePolygon);
+    QVector<QPointF> narrowedRotate;
+    for (const QPointF &pt : shapes.rotateHandlePolygon) {
+        narrowedRotate.append(narrowToFloat32(pt));
+    }
+    QCOMPARE(countDistinctPoints(narrowedRotate), rawRotateDistinct);
+
+    QVERIFY(narrowToFloat32(shapes.yLineGeom.start) != narrowToFloat32(shapes.yLineGeom.end));
 }
 
 void TstGizmos::visibilityFlagsControlGeometryVisibility()

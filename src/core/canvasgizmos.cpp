@@ -26,6 +26,8 @@
 #include "eevent.h"
 #include "Private/document.h"
 
+#include <cmath>
+
 #include <QLoggingCategory>
 
 Q_LOGGING_CATEGORY(lcGizmo, "friction.gizmo", QtWarningMsg)
@@ -42,26 +44,38 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
 
     // Project the pivot to device/screen space exactly once — a single-point transform,
     // so any float32 error here is a sub-pixel placement wobble, not a shattering shape —
-    // then build the drawn geometry directly in that space (raw pixel constants, scale=1,
-    // no invZoom) so it can't lose precision to catastrophic cancellation at extreme zoom.
+    // then build the drawn geometry directly in that space (raw pixel constants scaled
+    // only by devicePixelRatio, no invZoom) so it can't lose precision to catastrophic
+    // cancellation at extreme zoom. The SkCanvas surface is sized in physical device
+    // pixels (see CanvasWindow::fitCanvasToSize), while the config's "Px" constants are
+    // logical-pixel sizes, hence the devicePixelRatio factor here.
+    const qreal pixelRatio = qApp ? qApp->devicePixelRatio() : 1.0;
     const SkPoint skPivot = SkPoint::Make(toSkScalar(mGizmos.fState.pivot.x()),
                                           toSkScalar(mGizmos.fState.pivot.y()));
     SkPoint skScreenPivot;
     canvas->getTotalMatrix().mapPoints(&skScreenPivot, &skPivot, 1);
     const QPointF screenPivot(skScreenPivot.x(), skScreenPivot.y());
 
-    const auto shapes = Gizmos::buildShapes(mGizmos.fConfig,
-                                            mGizmos.fState.showRotate,
-                                            mGizmos.fState.showPosition,
-                                            mGizmos.fState.showScale,
-                                            mGizmos.fState.showShear,
-                                            1.0,
-                                            screenPivot);
+    if (!std::isfinite(skScreenPivot.x()) || !std::isfinite(skScreenPivot.y())) {
+        qCWarning(lcGizmo) << "renderGizmos: pivot projected to a non-finite screen point, skipping draw"
+                           << "pivot=" << mGizmos.fState.pivot
+                           << "screenPivot=" << skScreenPivot.x() << skScreenPivot.y();
+        return;
+    }
+
+    const auto screenShapes = Gizmos::buildShapes(mGizmos.fConfig,
+                                                  mGizmos.fState.showRotate,
+                                                  mGizmos.fState.showPosition,
+                                                  mGizmos.fState.showScale,
+                                                  mGizmos.fState.showShear,
+                                                  pixelRatio,
+                                                  screenPivot);
 
     qCDebug(lcGizmo) << "renderGizmos: qInvZoom=" << qInvZoom
+                     << "pixelRatio=" << pixelRatio
                      << "pivot=" << mGizmos.fState.pivot
                      << "screenPivot=" << screenPivot
-                     << "rotateHandleRadius(screen)=" << shapes.rotateHandleRadius;
+                     << "rotateHandleRadius(screen)=" << screenShapes.rotateHandleRadius;
 
     canvas->save();
     canvas->resetMatrix();
@@ -121,7 +135,7 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
 
     if (mGizmos.fState.rotateHandleVisible) {
         if (mGizmos.fState.showRotate) {
-            if (shapes.rotateHandlePolygon.size() >= 3) {
+            if (screenShapes.rotateHandlePolygon.size() >= 3) {
                 QColor fillColor = mGizmos.fTheme.colorZ;
                 fillColor.setAlpha(mGizmos.fState.rotateHandleHovered ? static_cast<int>(mGizmos.fTheme.colorAlphaFillHover)
                                                                       : static_cast<int>(mGizmos.fTheme.colorAlphaFillNormal));
@@ -136,7 +150,7 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
                 borderPaint.setStyle(SkPaint::kStroke_Style);
                 borderPaint.setStrokeJoin(SkPaint::kRound_Join);
                 borderPaint.setStrokeCap(SkPaint::kRound_Cap);
-                borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * 0.2f));
+                borderPaint.setStrokeWidth(toSkScalar(mGizmos.fConfig.rotateStrokePx * pixelRatio * 0.2f));
                 const int strokeLighten = mGizmos.fState.rotateHandleHovered ? mGizmos.fTheme.colorLightenHover : mGizmos.fTheme.colorLightenNormal;
                 QColor strokeColor = mGizmos.fTheme.colorZ.darker(strokeLighten);
                 strokeColor.setAlpha(mGizmos.fState.rotateHandleHovered ? static_cast<int>(mGizmos.fTheme.colorAlphaStrokeHover)
@@ -145,7 +159,7 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
 
                 SkPath path;
                 bool first = true;
-                for (const QPointF &pt : shapes.rotateHandlePolygon) {
+                for (const QPointF &pt : screenShapes.rotateHandlePolygon) {
                     const SkPoint skPt = SkPoint::Make(toSkScalar(pt.x()), toSkScalar(pt.y()));
                     if (first) {
                         path.moveTo(skPt);
@@ -343,42 +357,42 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
             }
         };
         drawAxisRect(Gizmos::AxisConstraint::Y,
-                     shapes.axisYGeom,
+                     screenShapes.axisYGeom,
                      QColor(mGizmos.fTheme.colorY.red(), mGizmos.fTheme.colorY.green(), mGizmos.fTheme.colorY.blue(),
                             mGizmos.fState.axisYHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawAxisRect(Gizmos::AxisConstraint::X,
-                     shapes.axisXGeom,
+                     screenShapes.axisXGeom,
                      QColor(mGizmos.fTheme.colorX.red(), mGizmos.fTheme.colorX.green(), mGizmos.fTheme.colorX.blue(),
                             mGizmos.fState.axisXHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawAxisRect(Gizmos::AxisConstraint::Uniform,
-                     shapes.axisUniformGeom,
+                     screenShapes.axisUniformGeom,
                      QColor(mGizmos.fTheme.colorZ.red(), mGizmos.fTheme.colorZ.green(), mGizmos.fTheme.colorZ.blue(),
                             mGizmos.fState.axisUniformHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawScaleSquare(Gizmos::ScaleHandle::Y,
-                        shapes.scaleYGeom,
+                        screenShapes.scaleYGeom,
                         QColor(mGizmos.fTheme.colorY.red(), mGizmos.fTheme.colorY.green(), mGizmos.fTheme.colorY.blue(),
                                mGizmos.fState.scaleYHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawScaleSquare(Gizmos::ScaleHandle::X,
-                        shapes.scaleXGeom,
+                        screenShapes.scaleXGeom,
                         QColor(mGizmos.fTheme.colorX.red(), mGizmos.fTheme.colorX.green(), mGizmos.fTheme.colorX.blue(),
                                mGizmos.fState.scaleXHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawScaleSquare(Gizmos::ScaleHandle::Uniform,
-                        shapes.scaleUniformGeom,
+                        screenShapes.scaleUniformGeom,
                         QColor(mGizmos.fTheme.colorUniform.red(), mGizmos.fTheme.colorUniform.green(), mGizmos.fTheme.colorUniform.blue(),
                                mGizmos.fState.scaleUniformHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawShearCircle(Gizmos::ShearHandle::Y,
-                        shapes.shearYGeom,
+                        screenShapes.shearYGeom,
                         QColor(mGizmos.fTheme.colorY.red(), mGizmos.fTheme.colorY.green(), mGizmos.fTheme.colorY.blue(),
                                mGizmos.fState.shearYHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
         drawShearCircle(Gizmos::ShearHandle::X,
-                        shapes.shearXGeom,
+                        screenShapes.shearXGeom,
                         QColor(mGizmos.fTheme.colorX.red(), mGizmos.fTheme.colorX.green(), mGizmos.fTheme.colorX.blue(),
                                mGizmos.fState.shearXHovered ? mGizmos.fTheme.colorAlphaFillHover : mGizmos.fTheme.colorAlphaFillNormal));
     }
 
-    Gizmos::LineGeometry screenXLine = shapes.xLineGeom;
+    Gizmos::LineGeometry screenXLine = screenShapes.xLineGeom;
     screenXLine.visible = mGizmos.fState.xLineGeom.visible;
-    Gizmos::LineGeometry screenYLine = shapes.yLineGeom;
+    Gizmos::LineGeometry screenYLine = screenShapes.yLineGeom;
     screenYLine.visible = mGizmos.fState.yLineGeom.visible;
 
     drawAxisLine(screenXLine,
@@ -683,7 +697,7 @@ void Canvas::updateRotateHandleGeometry(qreal invScale)
     else { pivot = mRotPivot->getAbsolutePos(); }
     mGizmos.fState.pivot = pivot; // cached for renderGizmos to project to screen space
 
-    const auto shapes = Gizmos::buildShapes(mGizmos.fConfig,
+    const auto worldShapes = Gizmos::buildShapes(mGizmos.fConfig,
                                             mGizmos.fState.showRotate,
                                             mGizmos.fState.showPosition,
                                             mGizmos.fState.showScale,
@@ -691,21 +705,21 @@ void Canvas::updateRotateHandleGeometry(qreal invScale)
                                             invScale,
                                             pivot);
 
-    mGizmos.fState.rotateHandlePolygon = shapes.rotateHandlePolygon;
-    mGizmos.fState.rotateHandleHitPolygon = shapes.rotateHandleHitPolygon;
-    mGizmos.fState.rotateHandleAnchor = shapes.rotateHandleAnchor;
-    mGizmos.fState.rotateHandleRadius = shapes.rotateHandleRadius;
-    mGizmos.fState.rotateHandlePos = shapes.rotateHandlePos;
-    mGizmos.fState.axisXGeom = shapes.axisXGeom;
-    mGizmos.fState.axisYGeom = shapes.axisYGeom;
-    mGizmos.fState.axisUniformGeom = shapes.axisUniformGeom;
-    mGizmos.fState.scaleXGeom = shapes.scaleXGeom;
-    mGizmos.fState.scaleYGeom = shapes.scaleYGeom;
-    mGizmos.fState.scaleUniformGeom = shapes.scaleUniformGeom;
-    mGizmos.fState.shearXGeom = shapes.shearXGeom;
-    mGizmos.fState.shearYGeom = shapes.shearYGeom;
-    mGizmos.fState.xLineGeom = shapes.xLineGeom;
-    mGizmos.fState.yLineGeom = shapes.yLineGeom;
+    mGizmos.fState.rotateHandlePolygon = worldShapes.rotateHandlePolygon;
+    mGizmos.fState.rotateHandleHitPolygon = worldShapes.rotateHandleHitPolygon;
+    mGizmos.fState.rotateHandleAnchor = worldShapes.rotateHandleAnchor;
+    mGizmos.fState.rotateHandleRadius = worldShapes.rotateHandleRadius;
+    mGizmos.fState.rotateHandlePos = worldShapes.rotateHandlePos;
+    mGizmos.fState.axisXGeom = worldShapes.axisXGeom;
+    mGizmos.fState.axisYGeom = worldShapes.axisYGeom;
+    mGizmos.fState.axisUniformGeom = worldShapes.axisUniformGeom;
+    mGizmos.fState.scaleXGeom = worldShapes.scaleXGeom;
+    mGizmos.fState.scaleYGeom = worldShapes.scaleYGeom;
+    mGizmos.fState.scaleUniformGeom = worldShapes.scaleUniformGeom;
+    mGizmos.fState.shearXGeom = worldShapes.shearXGeom;
+    mGizmos.fState.shearYGeom = worldShapes.shearYGeom;
+    mGizmos.fState.xLineGeom = worldShapes.xLineGeom;
+    mGizmos.fState.yLineGeom = worldShapes.yLineGeom;
 
     updateLineGizmoVisibility();
 

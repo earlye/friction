@@ -186,7 +186,7 @@ run-debug-3dc99fd1649a:
 # — use it to zoom in/out until the gizmo visibly breaks and find the
 # actual invZoom/pivot magnitude where that happens.
 run-debug-2cbfd30ced28:
-    QT_LOGGING_RULES="friction.gizmo=true;friction.canvas=true" just run-debug > log.txt 2>&1;
+    QT_LOGGING_RULES="friction.gizmo=true" just run-debug > log.txt 2>&1;
 
 # Produce the universal DMG from the two arch builds
 package: build

@@ -105,11 +105,18 @@ namespace Friction
                 bool visible = false;
             };
 
-            // Every handle's shape, expressed relative to `origin` and scaled by `scale`.
-            // Callers use this two ways: scale=invZoom/origin=world-pivot reproduces the
-            // existing world-space geometry (used for hit-testing); scale=1/origin=the
-            // pivot already projected to device space produces screen-space geometry safe
-            // to narrow to SkScalar without catastrophic cancellation (used for rendering).
+            // Every handle's shape: each offset from Config is added to `origin` after
+            // being multiplied by `scale`, so the whole result lives in whatever space
+            // `origin` is expressed in. Currently called two ways: scale=invZoom with a
+            // world-space pivot reproduces the existing world-space geometry (used for
+            // hit-testing); scale=devicePixelRatio with the pivot already projected to
+            // device space produces screen-space geometry safe to narrow to SkScalar
+            // without catastrophic cancellation (used for rendering).
+            //
+            // xLineGeom/yLineGeom.visible are always false here — buildShapes() doesn't
+            // know the axis-line-drag state that controls them; every caller must copy
+            // the correct value onto them from elsewhere (see Canvas::renderGizmos and
+            // Canvas::updateLineGizmoVisibility).
             struct Shapes
             {
                 QVector<QPointF> rotateHandlePolygon;
