@@ -49,9 +49,18 @@ void Canvas::renderGizmos(SkCanvas * const canvas,
     // cancellation at extreme zoom. The SkCanvas surface is sized in physical device
     // pixels (see CanvasWindow::fitCanvasToSize), while the config's "Px" constants are
     // logical-pixel sizes, hence the devicePixelRatio factor here.
-    qreal pixelRatio = 1.0;
-    if (qApp) { pixelRatio = qApp->devicePixelRatio(); }
-    else { qCWarning(lcGizmo) << "renderGizmos: no QApplication instance, defaulting devicePixelRatio to 1.0"; }
+    //
+    // mDevicePixelRatio is this window's own DPR (set by CanvasWindow::renderSk via
+    // setWorldToScreen) — not qApp->devicePixelRatio(), which returns the highest DPR
+    // across *all* connected screens and would be wrong for this window on a mixed-DPI
+    // multi-monitor setup. Only fall back to qApp's global value on the (paint-time-
+    // unreachable in practice) case where setWorldToScreen hasn't run yet.
+    qreal pixelRatio = mDevicePixelRatio;
+    if (!mHasWorldToScreen) {
+        pixelRatio = qApp ? qApp->devicePixelRatio() : 1.0;
+        qCWarning(lcGizmo) << "renderGizmos: no world-to-screen transform yet, falling back to"
+                           << "qApp->devicePixelRatio() =" << pixelRatio;
+    }
     const SkPoint skPivot = SkPoint::Make(toSkScalar(mGizmos.fState.pivot.x()),
                                           toSkScalar(mGizmos.fState.pivot.y()));
     SkPoint skScreenPivot;

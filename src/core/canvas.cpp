@@ -274,7 +274,11 @@ void Canvas::renderSk(SkCanvas* const canvas,
     mDrawnSinceQue = true;
     SkPaint paint;
     paint.setStyle(SkPaint::kFill_Style);
-    const qreal pixelRatio = qApp->devicePixelRatio();
+    // mDevicePixelRatio is the actual DPR of the window this canvas is being drawn
+    // into (set by CanvasWindow::renderSk via setWorldToScreen); qApp->devicePixelRatio()
+    // is only a degraded fallback for when that hasn't been established yet, since it
+    // returns the highest DPR across all connected screens, not this window's own.
+    const qreal pixelRatio = mHasWorldToScreen ? mDevicePixelRatio : qApp->devicePixelRatio();
     const SkRect canvasRect = SkRect::MakeWH(mWidth, mHeight);
     const qreal zoom = viewTrans.m11();
     const auto filter = eFilterSettings::sDisplay(zoom, mResolution);
