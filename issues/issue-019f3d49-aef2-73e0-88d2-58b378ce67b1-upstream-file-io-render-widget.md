@@ -36,11 +36,11 @@ Commits (oldest first):
 
 - `src/app/GUI/RenderWidgets/renderinstancewidget.cpp`,
   `outputsettingsdialog.cpp`
-- `src/core/document.h`, `appsupport.cpp` (via `AppSupport` update),
-  `hardwareinfo.cpp`
+- `src/core/Private/document.h`, `appsupport.cpp` (via `AppSupport`
+  update), `hardwareinfo.cpp`
 - `resources/presets/007-friction-preset-webm.conf`,
   `008-friction-preset-exr.conf`
-- `resources.qrc`, `friction.qss`, `CMakeLists.txt`, `main.cpp`
+- `src/app/resources.qrc`, `friction.qss`, `CMakeLists.txt`, `main.cpp`
 
 ## Next steps
 
