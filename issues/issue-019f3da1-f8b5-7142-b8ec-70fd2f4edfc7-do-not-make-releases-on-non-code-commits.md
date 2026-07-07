@@ -41,20 +41,26 @@ No path filtering exists on any of the build/release workflow triggers.
 
 - **Path filter list** (applied identically wherever gating is added):
   ```yaml
-  paths-ignore:
-    - '**/*.md'
-    - '!README.md'
-    - '!LICENSE.md'
-    - 'earlye-fork/**'
-    - 'docs/**'
-    - 'issues/**'
+  paths:
+    - '**'
+    - '!**/*.md'
+    - '!earlye-fork/**'
+    - '!docs/**'
+    - '!issues/**'
+    - 'README.md'
+    - 'LICENSE.md'
   ```
-  GitHub Actions path patterns without a leading `**/` only match the
-  repo-root file, so `!README.md` / `!LICENSE.md` re-include only the
-  root-level files (nested `src/**/README.md` stay ignored via `**/*.md`).
-  `paths` and `paths-ignore` can't both be set on the same trigger, so the
-  re-inclusion is expressed as negated entries inside `paths-ignore` instead
-  of a separate `paths:` key.
+  GitHub's docs confirm negation (`!`) for re-inclusion is only supported in
+  the `paths` filter, not `paths-ignore` — `paths-ignore` has no re-include
+  mechanism, so an initial `paths-ignore: ['**/*.md', '!README.md', ...]`
+  draft was wrong (it would have silently skipped README.md/LICENSE.md-only
+  builds, exactly the case that must still build). Switched to an inclusive
+  `paths:` filter instead: `'**'` matches everything, the `!...` entries
+  exclude docs/issues paths, and the trailing `README.md`/`LICENSE.md`
+  entries re-include those two root files (patterns match the whole path
+  from repo root, so a bare `README.md` matches only the root file, not
+  nested `src/**/README.md`). Order matters — last matching pattern per file
+  wins.
 - **PR builds**: add the list above directly under each of `linux.yml`,
   `macos.yml`, `windows.yml`'s own `pull_request:` key. Their `workflow_call:`
   trigger (used only by `release.yml`) stays unfiltered — `workflow_call`
