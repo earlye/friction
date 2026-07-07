@@ -19,10 +19,20 @@ Commits (oldest first):
 - `src/core/grid.cpp` / `.h`
 - `src/ui/widgets/toolinteract.cpp`
 
-No overlap with fork-specific code.
+### Conflict risk
+
+`canvasmouseinteractions.cpp` is a real overlap, not a clean miss: the
+fork touched it for the lock-icon-flash feature (`09da7b7e0`) and a
+camera-view-matrix fix (`950a1d3d4`). `grid.cpp` overlaps too, but only
+via the fork's mechanical qDebug→qCDebug conversion (`98c52ecd2`) — low
+risk there. Review the `canvasmouseinteractions.cpp` merge carefully;
+it's plausible but not guaranteed to be a clean textual merge.
 
 ## Next steps
 
 - Cherry-pick `cfe2d62d2` then `ebee130d5` from `upstream/main`.
-- Build and manually test rotation with Ctrl/Shift held during drag.
+- `git blame` the merged `canvasmouseinteractions.cpp` to confirm the
+  lock-icon-flash and camera-matrix fixes are both still intact.
+- Build and manually test rotation with Ctrl/Shift held during drag,
+  plus the lock-icon-flash and camera-view behaviors.
 - Open a PR against `earlye/friction`.

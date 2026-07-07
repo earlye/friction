@@ -28,7 +28,9 @@ Commits (oldest first):
 - `src/core/Animators/SmartPath/node.cpp`
 - `src/core/Animators/SmartPath/smartpath.cpp`
 
-No overlap with fork-specific SVG import/flipbook-track code.
+No overlap with fork-specific SVG import/flipbook-track code. The fork
+does touch `nodelist.cpp` once (`17befd390`, an
+`-Wunused-but-set-variable` warning fix) — trivial, low conflict risk.
 
 ## Next steps
 

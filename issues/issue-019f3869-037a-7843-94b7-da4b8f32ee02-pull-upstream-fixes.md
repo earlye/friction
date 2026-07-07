@@ -29,15 +29,55 @@ Full list: `git log --oneline bed346462745c9ae3f55c47e5329d4e63c24efe5..upstream
 
 ### Conflict risk
 
-Comparing files touched by the fork (`git log
-3701b0559990eae4fa315b7215a11d46122cb97b..main --stat`) against files
-touched by these 60 upstream commits, only one file overlaps:
-`src/app/GUI/BoxesList/boxsinglewidget.cpp` — touched by upstream
-commits `e8ce39a7c`, `1a4d7d422`, `e1c213522` (layer-type icons, +76
-lines), and `b92fb382b`. The fork's SVG-import/flipbook-track work
-(`svglinkbox.cpp`, `svgimporter.cpp`, `svgflipbooktrack.*`,
-`svgelementtrack.*`) is untouched by these upstream commits, so no
-conflict is expected there.
+**Correction (2026-07-07 self-review)**: an earlier version of this
+section claimed only one file overlapped. That was wrong — it compared
+against a truncated (`--stat` head-limited) file list. A full
+`comm -12` between every `.cpp`/`.h` file the fork has touched since
+`3701b0559990eae4fa315b7215a11d46122cb97b` and every file these 60
+upstream commits touch found **18 overlapping files**:
+
+- `src/app/GUI/BoxesList/boxsinglewidget.cpp` / `.h` —
+  `upstream-layer-type-icons`. Additive upstream hunk, low risk (see
+  that sub-issue).
+- `src/app/GUI/canvaswindow.cpp`, `src/core/Boxes/svglinkbox.cpp`,
+  `videobox.cpp`, `src/core/CacheHandlers/soundcachehandler.cpp`,
+  `src/core/GUI/edialogs.cpp`/`.h`, `src/ui/dialogs/exportsvgdialog.cpp`
+  — all via `b8e3e7b86` in `upstream-file-io-render-widget`, the
+  **highest-risk batch**: it touches the fork's SVG-link source-file
+  handling and its audio-waveform feature (PRs #56/#60). See that
+  sub-issue's own Conflict risk section.
+- `src/core/appsupport.cpp` and `src/app/GUI/mainwindow.cpp` are each
+  touched by upstream commits spread across **four different
+  batches** (`appsupport.cpp`: `upstream-sdk-ci-updates`,
+  `upstream-misc`, `upstream-expression-presets`,
+  `upstream-flatpak-earlysettings-fixes`,
+  `upstream-file-io-render-widget`; `mainwindow.cpp`:
+  `upstream-quicksetup-wizard`, `upstream-shutdown-deadlock`,
+  `upstream-expression-presets`, `upstream-file-io-render-widget`) —
+  no single sub-issue owns the fork-conflict risk here, and pulling
+  these batches in different orders/PRs raises the chance of one
+  batch's PR failing to apply cleanly after another already landed.
+  Not blocking, but worth resolving each batch's conflicts (if any)
+  against whatever's already on `main` at pull time, not against this
+  plan's assumptions.
+- `src/app/GUI/menu.cpp` — `upstream-quicksetup-wizard` and
+  `upstream-misc` (both touch it; land wizard first).
+- `src/core/Animators/SmartPath/nodelist.cpp` —
+  `upstream-smartpath-hardening`. Fork's only touch is a trivial
+  unused-variable-warning fix; low risk.
+- `src/core/canvasmouseinteractions.cpp`, `src/core/grid.cpp` —
+  `upstream-step-rotation`. Fork's lock-icon-flash and camera-matrix
+  fixes live in `canvasmouseinteractions.cpp`; moderate risk, review
+  the merge.
+- `src/core/Expressions/expressionpresets.cpp` —
+  `upstream-expression-presets`. Fork's only touch silences its
+  logging; low risk.
+- `src/ui/widgets/uilayout.cpp` — `upstream-shutdown-deadlock`. Fork's
+  touch is a mechanical logging-category conversion; low risk.
+
+Each affected sub-issue above now carries its own conflict-risk note
+with these specifics. `upstream-askdialog-ui`, `upstream-gles3-support`,
+and `upstream-sdk-ci-updates` have no fork overlap.
 
 ## Root cause / motivation
 
@@ -61,27 +101,30 @@ pulls):
 6. [upstream-gles3-support](issue-019f3d49-aec7-7e31-aba0-37417806d215-upstream-gles3-support.md) — `7bed5df2c` (dependency for #13)
 7. [upstream-step-rotation](issue-019f3d49-aed2-7a60-be40-6e7da6059a01-upstream-step-rotation.md) — `cfe2d62d2`, `ebee130d5`
 8. [upstream-expression-presets](issue-019f3d49-aedf-73f0-897f-fee991eb8004-upstream-expression-presets.md) — `b7df5c737`, `8f38c869d`, `e3163c5bd`, `464dd5aa8`, `e9d892c18`, `5e7ffd799`, `9ff91e5bb`, `4508b4681`
-9. [upstream-layer-type-icons](issue-019f3d49-aee9-7af0-9f7d-e0a6172151f1-upstream-layer-type-icons.md) — `e1c213522`, `1a4d7d422`, `e8ce39a7c`, `b92fb382b` (touches the one file the fork also modifies — see Conflict risk above; upstream's hunk is purely additive so a clean textual merge is expected)
-10. [upstream-file-io-render-widget](issue-019f3d49-aef2-73e0-88d2-58b378ce67b1-upstream-file-io-render-widget.md) — `b8e3e7b86` + 15 related commits
+9. [upstream-layer-type-icons](issue-019f3d49-aee9-7af0-9f7d-e0a6172151f1-upstream-layer-type-icons.md) — `e1c213522`, `1a4d7d422`, `e8ce39a7c`, `b92fb382b` (touches `boxsinglewidget.cpp`, which the fork also modifies — see Conflict risk above; upstream's hunk is purely additive so a clean textual merge is expected)
+10. [upstream-file-io-render-widget](issue-019f3d49-aef2-73e0-88d2-58b378ce67b1-upstream-file-io-render-widget.md) — `b8e3e7b86` + 15 related commits (highest conflict risk — see above)
 11. [upstream-sdk-ci-updates](issue-019f3d49-aefc-7952-8a9b-a0ff677defeb-upstream-sdk-ci-updates.md) — `06c773c83`, `c9f95d593`, `1d60fbe04`
 12. [upstream-askdialog-ui](issue-019f3d49-af05-76d1-be50-b96bc4989a1d-upstream-askdialog-ui.md) — `9623be1ad`
-13. [upstream-misc](issue-019f3d49-af0e-7712-9466-95c9fc7e29f7-upstream-misc.md) — `0f10e7f22` + structural merge commits (`9a77c55b8`, `b4dc56d9f`, `91c99afbb`, `353eec530`, `9817ec231`) (depends on #6)
+13. [upstream-misc](issue-019f3d49-af0e-7712-9466-95c9fc7e29f7-upstream-misc.md) — `0f10e7f22`, `e6d16e4e9` + structural merge commits (`9a77c55b8`, `b4dc56d9f`, `91c99afbb`, `353eec530`, `9817ec231`) (depends on #5 and #6)
 
-No priority order was otherwise decided — every remaining batch is
-independently tracked and testable, so whichever is convenient can be
-pulled first. Note the three dependencies discovered while writing the
-sub-issues (marked above): #5 must land before #3/#4 (they edit files
-#5 creates), and #6 must land before #13 (its GLES check depends on
-GLES3 support existing).
+No priority order was otherwise decided beyond the four known
+dependencies (marked above): #5 must land before #3/#4 (they edit
+files #5 creates) and before #13 (shared `menu.cpp` touch), and #6
+must land before #13 (its GLES check depends on GLES3 support
+existing). Every other batch is independently tracked and testable, so
+whichever is convenient can be pulled first — but see the Conflict
+risk section above for the `appsupport.cpp`/`mainwindow.cpp`
+cross-batch caution.
 
 ## Next steps
 
 - [x] Run `/md-issue-track` to create the 13 sub-issues listed above
 - [ ] For each sub-issue, run `/md-issue-fix` to pull/cherry-pick,
-      build, test, and PR that batch independently (respecting the 3
+      build, test, and PR that batch independently (respecting the
       dependencies noted above)
-- [ ] Use `git blame` to resolve the `boxsinglewidget.cpp` overlap when
-      pulling `upstream-layer-type-icons`
+- [ ] Use `git blame` to resolve each sub-issue's noted file overlaps
+      after pulling it (see Conflict risk above; `boxsinglewidget.cpp`
+      and `b8e3e7b86`'s file set are the highest-priority checks)
 - [ ] Update `CLAUDE.md`'s "last upstream commit incorporated" pointer
       once all 13 batches have landed
 - [ ] Update `earlye-fork.md` if any incorporated changes affect
@@ -104,3 +147,25 @@ GLES3 support existing).
 - Q: Create the 13 sub-issues now, or just record the plan for later?
   — A: Log the plan into this issue now, then proceed straight to
   `/md-issue-fix`, which will write the sub-issue files and open a PR.
+
+### 2026-07-07 (self-review correction, after PR #90 was opened)
+
+A second-pass background review (agent-to-agent, independently
+verified before acting) found the initial breakdown had real
+inaccuracies, since fixed:
+
+- The preset-file path in `upstream-file-io-render-widget` was wrong
+  (`resources/presets/...` → `src/app/presets/render/...`).
+- `e6d16e4e9` ("Update menu.cpp") was in the 60-commit range but wasn't
+  assigned to any sub-issue — added to `upstream-misc`. A full
+  reconciliation confirmed it was the only genuinely missing commit.
+- The Conflict risk section's "only one file overlaps" claim was
+  false — it was based on a `--stat`-truncated file list. Redone with
+  a full `comm -12` diff: 18 files actually overlap, spread across 8
+  of the 13 batches. `upstream-file-io-render-widget` is now flagged
+  as the highest-risk batch (touches `svglinkbox.cpp`, `videobox.cpp`,
+  `soundcachehandler.cpp` — the fork's SVG-link and audio-waveform
+  code). Each affected sub-issue got its own risk note.
+- `upstream-layer-type-icons`: added `coloranimatorbutton.cpp` to
+  Relevant files, and corrected `b92fb382b`'s description — it's an
+  unrelated HiDPI warning-text change, not layer-icon work.

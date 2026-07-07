@@ -10,8 +10,9 @@ install presets), built from new reusable wizard widgets. This is a
 genuinely new feature, not a fix — larger review surface than the
 other batches.
 
-**This batch is a dependency for three other tracked pulls**:
-[upstream-cpu-raster-default](issue-019f3d49-ae9f-77d0-ac16-20917aa9d657-upstream-cpu-raster-default.md),
+**This batch is a dependency for two other tracked pulls**:
+[upstream-cpu-raster-default](issue-019f3d49-ae9f-77d0-ac16-20917aa9d657-upstream-cpu-raster-default.md)
+and
 [upstream-flatpak-earlysettings-fixes](issue-019f3d49-aeac-7bb1-a46c-eabe1fd4330a-upstream-flatpak-earlysettings-fixes.md),
 each of which edit files this batch creates. Pull this one first.
 
@@ -37,6 +38,12 @@ Commits (oldest first):
 - `src/app/GUI/menu.cpp` / help-menu wiring
 
 No overlap with fork-specific SVG import/flipbook-track code.
+`f3c6e673c` and `6aa0cb58a` do touch `mainwindow.cpp`/`menu.cpp`, which
+the fork also modifies (mechanical qDebug→qCDebug conversion) and
+which
+[upstream-misc](issue-019f3d49-af0e-7712-9466-95c9fc7e29f7-upstream-misc.md)
+also touches (`e6d16e4e9`) — land this batch before `upstream-misc` to
+avoid an avoidable textual conflict on `menu.cpp`.
 
 ## Next steps
 

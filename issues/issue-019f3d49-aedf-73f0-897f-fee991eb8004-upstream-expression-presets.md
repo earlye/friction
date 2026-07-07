@@ -29,7 +29,16 @@ Commits (oldest first, per branch history):
 - `src/app/GUI/Expressions/expressiondialog.cpp`
 - `src/app/GUI/mainwindow.cpp`
 
-No overlap with fork-specific code.
+### Conflict risk
+
+Both `expressionpresets.cpp` and `mainwindow.cpp` overlap with fork
+changes, but both are low-risk: `expressionpresets.cpp` only via the
+fork's `8f1d7cf9e` (silences its logging, a debug-recipe change), and
+`mainwindow.cpp` overlaps with several other batches in this same
+pull (see the meta-issue's Conflict risk section) — mostly mechanical
+qDebug→qCDebug conversions and prior upstream-incorporation commits.
+No known semantic conflict, but do a `git blame` pass on `mainwindow.cpp`
+after all batches touching it have landed, not just this one.
 
 ## Next steps
 

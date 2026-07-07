@@ -15,7 +15,14 @@ scheduler and main window shutdown path.
 - `src/core/Private/Tasks/taskscheduler.cpp`
 - `src/ui/widgets/uilayout.cpp` / `.h`
 
-No overlap with fork-specific code.
+### Conflict risk
+
+`mainwindow.cpp` and `uilayout.cpp` both overlap with fork changes,
+but only via the fork's mechanical qDebug→qCDebug logging conversion
+(`98c52ecd2`) and a prior upstream-incorporation commit (`c2ac58b2c`)
+— low risk. Per the fork's stated preference, keep `QLoggingCategory`
+usage intact rather than reverting to plain `qDebug()` if this
+commit's diff touches any of those call sites.
 
 ## Next steps
 
