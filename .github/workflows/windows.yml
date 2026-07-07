@@ -2,6 +2,13 @@ name: Windows
 
 on:
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '!README.md'
+      - '!LICENSE.md'
+      - 'earlye-fork/**'
+      - 'docs/**'
+      - 'issues/**'
   workflow_call:
 
 jobs:

@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**/*.md'
+      - '!README.md'
+      - '!LICENSE.md'
+      - 'earlye-fork/**'
+      - 'docs/**'
+      - 'issues/**'
 
 jobs:
   build-linux:
