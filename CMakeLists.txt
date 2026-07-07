@@ -75,6 +75,12 @@ add_subdirectory(src/core)
 add_subdirectory(src/ui)
 add_subdirectory(src/app)
 
+option(FRICTION_BUILD_TESTS "Build unit tests" ON)
+if(FRICTION_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+
 if(${BUILD_SKIA})
     add_dependencies(frictioncore skialib)
 endif()

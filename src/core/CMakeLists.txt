@@ -250,6 +250,7 @@ set(
     canvasmouseinteractions.cpp
     canvasgizmos.cpp
     canvasgrid.cpp
+    gizmos.cpp
     canvasselectedboxesactions.cpp
     canvasselectedpointsactions.cpp
     clipboardcontainer.cpp
