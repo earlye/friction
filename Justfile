@@ -179,6 +179,15 @@ run-debug-6d33bbeb7e3f:
 run-debug-3dc99fd1649a:
     QT_LOGGING_RULES="friction.svgflipbooktrack=true;friction.ui.boxlist=true;friction.svgfollower=true" just run-debug > log.txt 2>&1;
 
+# Debug issue 2cbfd30ced28: transform gizmo distorts at extreme canvas
+# zoom. friction.gizmo logs the resolved world-space pivot, the invZoom
+# passed to updateRotateHandleGeometry, and the pivot's projected
+# screen-space position + rotate-handle radius on every renderGizmos call
+# — use it to zoom in/out until the gizmo visibly breaks and find the
+# actual invZoom/pivot magnitude where that happens.
+run-debug-2cbfd30ced28:
+    QT_LOGGING_RULES="friction.gizmo=true" just run-debug > log.txt 2>&1;
+
 # Produce the universal DMG from the two arch builds
 package: build
     #!/usr/bin/env bash
