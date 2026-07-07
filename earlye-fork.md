@@ -320,6 +320,7 @@ links, which are all `earlye/friction` fork PR numbers.
 | [#28](https://github.com/earlye/friction/pull/28) | Fix release artifact glob: Linux artifact has a version subdirectory | fork-introduced — same | won't PR |
 | [#42](https://github.com/earlye/friction/pull/42) | Fix shallow checkout causing wrong commit count in build version | fork-introduced — SemVer CI setup introduced the shallow-clone assumption | won't PR |
 | [#43](https://github.com/earlye/friction/pull/43) | Optimize CI: SDK/Docker caching, `MKJOBS=4`, DMG arch naming, 7z `-mx5` | fork-introduced — CI infrastructure owned by this fork | won't PR |
+| [#91](https://github.com/earlye/friction/pull/91) | Skip CI builds/releases for docs- and issue-only changes | fork-introduced — CI infrastructure owned by this fork | won't PR |
 
 ### Rendering / Playback
 

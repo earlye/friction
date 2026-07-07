@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '**'
+      - '!**/*.md'
+      - '!earlye-fork/**'
+      - '!docs/**'
+      - '!issues/**'
+      - 'README.md'
+      - 'LICENSE.md'
 
 jobs:
   build-linux:

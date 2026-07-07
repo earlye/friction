@@ -2,6 +2,14 @@ name: Linux
 
 on:
   pull_request:
+    paths:
+      - '**'
+      - '!**/*.md'
+      - '!earlye-fork/**'
+      - '!docs/**'
+      - '!issues/**'
+      - 'README.md'
+      - 'LICENSE.md'
   workflow_call:
 
 concurrency:

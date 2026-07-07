@@ -36,6 +36,10 @@ Fixes section intro for the full convention.
 - When reporting that you've pushed to or created a PR, hyperlink the
   PR reference (e.g. `[PR #88](https://github.com/earlye/friction/pull/88)`)
   instead of writing a bare `PR #88`, so it's clickable.
+- Whenever there's an active PR for the current work (e.g. while
+  babysitting one), include a link to it in every status update, not
+  just the message where it was first created or pushed — the PR URL
+  scrolls out of view in long conversations.
 
 ## Pulling Upstream Changes
 
