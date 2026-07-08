@@ -47,3 +47,14 @@ target_link_libraries(tst_gizmos PRIVATE
 )
 
 add_test(NAME tst_gizmos COMMAND tst_gizmos)
+
+add_executable(tst_movablepoint_precision
+    tst_movablepoint_precision.cpp
+)
+target_link_libraries(tst_movablepoint_precision PRIVATE
+    Qt${QT_VERSION_MAJOR}::Core
+    Qt${QT_VERSION_MAJOR}::Gui
+    Qt${QT_VERSION_MAJOR}::Test
+)
+
+add_test(NAME tst_movablepoint_precision COMMAND tst_movablepoint_precision)
