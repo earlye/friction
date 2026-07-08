@@ -48,6 +48,12 @@ namespace {
 // the current total-matrix scale carries no such risk, since it's a single
 // multiplication rather than an addition of mismatched magnitudes. Same
 // pattern as the gizmo fix in issue-019f2ded.
+//
+// Returns false (skip the draw) if the point projects to a non-finite
+// screen position, or if the matrix's scale can't be determined (Skia's
+// SkMatrix::getMinScale() returns -1 for an overflowed or perspective
+// matrix). Only computes coordinates; callers are still responsible for
+// their own canvas->save()/resetMatrix()/restore() bracketing.
 bool projectToScreen(SkCanvas * const canvas, const SkPoint &absPos,
                      const float invScale, SkPoint * const screenPos,
                      float * const pixelScale) {
@@ -57,7 +63,13 @@ bool projectToScreen(SkCanvas * const canvas, const SkPoint &absPos,
                                   << "absPos=" << absPos.x() << absPos.y();
         return false;
     }
-    *pixelScale = invScale*canvas->getTotalMatrix().getMinScale();
+    const float matrixScale = canvas->getTotalMatrix().getMinScale();
+    if(matrixScale < 0.f) {
+        qCWarning(lcMovablePoint) << "projectToScreen: total matrix scale is invalid (overflowed or perspective), skipping draw"
+                                  << "absPos=" << absPos.x() << absPos.y();
+        return false;
+    }
+    *pixelScale = invScale*matrixScale;
     qCDebug(lcMovablePoint) << "projectToScreen: invScale=" << invScale
                             << "absPos=" << absPos.x() << absPos.y()
                             << "screenPos=" << screenPos->x() << screenPos->y()

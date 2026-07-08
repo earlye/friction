@@ -189,12 +189,12 @@ run-debug-2cbfd30ced28:
     QT_LOGGING_RULES="friction.gizmo=true" just run-debug > log.txt 2>&1;
 
 # Debug issue f48a666431f6: MovablePoint circle markers (rotation pivot,
-# path nodes, control points) distort into ovals at extreme canvas zoom —
-# same root cause as the gizmo (issue 2cbfd30ced28) but in
+# path nodes, control points) distorted into ovals at extreme canvas zoom —
+# same root cause as the gizmo (issue 2cbfd30ced28), fixed the same way in
 # MovablePoint::drawOnAbsPosSk/drawHovered. friction.movablepoint logs the
 # absolute world position, projected screen position, and resolved
-# pixelScale on every draw — use it to zoom in/out until a marker visibly
-# breaks and find the actual invScale/absPos magnitude where that happens.
+# pixelScale on every draw — use it to confirm markers stay circular at
+# extreme zoom (regression check for the float32 precision-loss fix).
 run-debug-f48a666431f6:
     QT_LOGGING_RULES="friction.movablepoint=true" just run-debug > log.txt 2>&1;
 

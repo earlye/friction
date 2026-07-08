@@ -21,6 +21,7 @@
 */
 
 #include <QtTest>
+#include <cmath>
 
 // MovablePoint::drawOnAbsPosSk's precision bug lived inside SkCanvas::drawCircle
 // itself: it builds a world-space bounding rect (cx-r, cy-r, cx+r, cy+r) in
@@ -29,6 +30,14 @@
 // tst_gizmos.cpp's narrowToFloat32() modeled SkScalar narrowing — so this test
 // can characterize the bug and the fix without linking the whole frictioncore
 // (Skia, FFmpeg, ...) static archive for one dependency-free computation.
+//
+// Caveat: unlike tst_gizmos.cpp (which compiles and calls the real
+// Gizmos::buildShapes), the helpers below are standalone reimplementations
+// of the arithmetic, not the actual functions in movablepoint.cpp — this
+// test proves the fix's approach is numerically sound in isolation, it does
+// not exercise movablepoint.cpp's projectToScreen/drawOnAbsPosSk/drawHovered
+// directly, so it would not catch a regression that reintroduced the bug
+// there while leaving this file untouched.
 
 // Old (buggy) approach: scale the radius in world space (radius * invScale,
 // tied to how extreme the zoom is) and let it be added/subtracted straight
