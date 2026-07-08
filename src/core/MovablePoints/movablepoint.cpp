@@ -30,6 +30,56 @@
 #include "themesupport.h"
 #include "Private/document.h"
 
+#include <cmath>
+
+#include <QLoggingCategory>
+
+Q_LOGGING_CATEGORY(lcMovablePoint, "friction.movablepoint", QtWarningMsg)
+
+namespace {
+// Projects absPos through the canvas's current total matrix and reports the
+// effective world-to-screen scale at that point, so callers can draw entirely
+// in device/screen space afterward instead of asking SkCanvas to build a
+// bounding box from absPos +/- a radius in world space. At extreme zoom,
+// absPos and the total matrix's scale are both huge/tiny outliers, and any
+// value derived by *adding* a small radius to absPos in float32 loses
+// precision asymmetrically between the x and y axes (they rarely share the
+// same magnitude), stretching circles into ovals. Multiplying invScale by
+// the current total-matrix scale carries no such risk, since it's a single
+// multiplication rather than an addition of mismatched magnitudes. Same
+// pattern as the gizmo fix in issue-019f2ded.
+//
+// Returns false (skip the draw) if the point projects to a non-finite
+// screen position, or if the resulting pixelScale isn't a usable size
+// (negative, or non-finite because e.g. Skia's SkMatrix::getMinScale()
+// returned -1 for an overflowed/perspective matrix, or because invScale
+// itself - derived from the view transform, unclamped - overflowed).
+// Only computes coordinates; callers are still responsible for their own
+// canvas->save()/resetMatrix()/restore() bracketing.
+bool projectToScreen(SkCanvas * const canvas, const SkPoint &absPos,
+                     const float invScale, SkPoint * const screenPos,
+                     float * const pixelScale) {
+    canvas->getTotalMatrix().mapPoints(screenPos, &absPos, 1);
+    if(!std::isfinite(screenPos->x()) || !std::isfinite(screenPos->y())) {
+        qCWarning(lcMovablePoint) << "projectToScreen: absPos projected to a non-finite screen point, skipping draw"
+                                  << "absPos=" << absPos.x() << absPos.y();
+        return false;
+    }
+    const float matrixScale = canvas->getTotalMatrix().getMinScale();
+    *pixelScale = invScale*matrixScale;
+    if(!std::isfinite(*pixelScale) || *pixelScale < 0.f) {
+        qCWarning(lcMovablePoint) << "projectToScreen: computed pixelScale is invalid, skipping draw"
+                                  << "invScale=" << invScale << "matrixScale=" << matrixScale;
+        return false;
+    }
+    qCDebug(lcMovablePoint) << "projectToScreen: invScale=" << invScale
+                            << "absPos=" << absPos.x() << absPos.y()
+                            << "screenPos=" << screenPos->x() << screenPos->y()
+                            << "pixelScale=" << *pixelScale;
+    return true;
+}
+}
+
 MovablePoint::MovablePoint(const MovablePointType type) : mType(type) {}
 
 MovablePoint::MovablePoint(BasicTransformAnimator * const trans,
@@ -48,13 +98,22 @@ const QPointF &MovablePoint::getSavedRelPos() const {
 
 void MovablePoint::drawHovered(SkCanvas * const canvas,
                                const float invScale) {
+    const SkPoint absPos = toSkPoint(getAbsolutePos());
+    SkPoint screenPos;
+    float pixelScale;
+    if(!projectToScreen(canvas, absPos, invScale, &screenPos, &pixelScale)) return;
+
+    canvas->save();
+    canvas->resetMatrix();
+
     SkPaint paint;
     paint.setAntiAlias(true);
     paint.setStyle(SkPaint::kStroke_Style);
-    paint.setStrokeWidth(1.5f*invScale);
+    paint.setStrokeWidth(1.5f*pixelScale);
     paint.setColor(SK_ColorRED);
-    canvas->drawCircle(toSkPoint(getAbsolutePos()),
-                       static_cast<float>(mRadius)*invScale, paint);
+    canvas->drawCircle(screenPos, static_cast<float>(mRadius)*pixelScale, paint);
+
+    canvas->restore();
     //pen.setCosmetic(true);
     //p->setPen(pen);
 //    drawCosmeticEllipse(p, getAbsolutePos(),
@@ -91,32 +150,41 @@ void MovablePoint::drawOnAbsPosSk(SkCanvas * const canvas,
     doc->fPivotPosForGizmos = getAbsolutePos();
     doc->fPivotPosForGizmosValid = true;
 
-    const float scaledRadius = static_cast<float>(mRadius)*invScale;
+    SkPoint screenPos;
+    float pixelScale;
+    if(!projectToScreen(canvas, absPos, invScale, &screenPos, &pixelScale)) return;
+
+    canvas->save();
+    canvas->resetMatrix();
+
+    const float scaledRadius = static_cast<float>(mRadius)*pixelScale;
 
     SkPaint paint;
     paint.setAntiAlias(true);
     paint.setColor(fillColor);
 
     paint.setStyle(SkPaint::kFill_Style);
-    canvas->drawCircle(absPos, scaledRadius, paint);
+    canvas->drawCircle(screenPos, scaledRadius, paint);
 
     paint.setStyle(SkPaint::kStroke_Style);
     paint.setColor(toSkColor(ThemeSupport::getThemeButtonBaseColor()));
-    paint.setStrokeWidth(invScale);
-    canvas->drawCircle(absPos, scaledRadius, paint);
+    paint.setStrokeWidth(pixelScale);
+    canvas->drawCircle(screenPos, scaledRadius, paint);
 
     if(keyOnCurrent) {
         const float halfRadius = scaledRadius*0.5f;
 
         paint.setColor(toSkColor(ThemeSupport::getThemeColorRed()));
         paint.setStyle(SkPaint::kFill_Style);
-        canvas->drawCircle(absPos, halfRadius, paint);
+        canvas->drawCircle(screenPos, halfRadius, paint);
 
         paint.setStyle(SkPaint::kStroke_Style);
-        paint.setStrokeWidth(0.5f*invScale);
+        paint.setStrokeWidth(0.5f*pixelScale);
         paint.setColor(SK_ColorWHITE);
-        canvas->drawCircle(absPos, halfRadius, paint);
+        canvas->drawCircle(screenPos, halfRadius, paint);
     }
+
+    canvas->restore();
 }
 
 void MovablePoint::drawSk(SkCanvas * const canvas, const CanvasMode mode,
