@@ -340,6 +340,12 @@ links, which are all `earlye/friction` fork PR numbers.
 | [#41](https://github.com/earlye/friction/pull/41) | Fix active camera box hover/selection in canvas viewport | fork-introduced | won't PR |
 | [#46](https://github.com/earlye/friction/pull/46) | Fix double camera transform on SvgElementTrack elements after timeline scrub | fork-introduced | won't PR |
 
+### Canvas UI / Overlays
+
+| # | Fix | Origin | Upstream |
+|---|-----|--------|----------|
+| [#93](https://github.com/earlye/friction/pull/93) | Fix MovablePoint circle markers (rotation pivot, path nodes, control points) distorting into ovals at extreme canvas zoom — `SkCanvas::drawCircle`'s internal bounds construction lost precision asymmetrically between axes | pre-existing — bug was in upstream `MovablePoint::drawOnAbsPosSk`/`drawHovered` | need PR |
+
 ### SvgElementTrack / Flipbook
 
 | # | Fix | Origin | Upstream |
