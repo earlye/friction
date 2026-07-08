@@ -11,11 +11,14 @@ gizmo's origin) — this is *not* part of the fixed gizmo code.
 In box-transform mode, zoomed in extremely on the gizmo (viewport
 positioned away from visible artwork, near the SVG's local `0,0` / the
 box's pivot), the pivot's circle marker stretched into an oval instead
-of staying circular. Confirmed via screenshots:
-`issue-019f3d32-cdd9-7052-b37a-f48a666431f6-movablepoint-circle-precision-loss-normal.jpg`
-shows a circular orange marker with a `+` inside;
-`...-distorted.jpg` shows the same marker stretched into an oval, with
-other gizmo handles' relative positions/sizes also visibly shifted.
+of staying circular. Confirmed via screenshots below: the first shows
+a circular orange marker with a `+` inside; the second shows the same
+marker stretched into an oval, with other gizmo handles' relative
+positions/sizes also visibly shifted.
+
+| Normal | Distorted |
+| --- | --- |
+| ![Normal circular pivot marker](issue-019f3d32-cdd9-7052-b37a-f48a666431f6-movablepoint-circle-precision-loss-normal.jpg) | ![Distorted oval pivot marker](issue-019f3d32-cdd9-7052-b37a-f48a666431f6-movablepoint-circle-precision-loss-distorted.jpg) |
 
 ## Root cause (traced, not yet fixed)
 
