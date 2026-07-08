@@ -50,10 +50,12 @@ namespace {
 // pattern as the gizmo fix in issue-019f2ded.
 //
 // Returns false (skip the draw) if the point projects to a non-finite
-// screen position, or if the matrix's scale can't be determined (Skia's
-// SkMatrix::getMinScale() returns -1 for an overflowed or perspective
-// matrix). Only computes coordinates; callers are still responsible for
-// their own canvas->save()/resetMatrix()/restore() bracketing.
+// screen position, or if the resulting pixelScale isn't a usable size
+// (negative, or non-finite because e.g. Skia's SkMatrix::getMinScale()
+// returned -1 for an overflowed/perspective matrix, or because invScale
+// itself - derived from the view transform, unclamped - overflowed).
+// Only computes coordinates; callers are still responsible for their own
+// canvas->save()/resetMatrix()/restore() bracketing.
 bool projectToScreen(SkCanvas * const canvas, const SkPoint &absPos,
                      const float invScale, SkPoint * const screenPos,
                      float * const pixelScale) {
@@ -64,12 +66,12 @@ bool projectToScreen(SkCanvas * const canvas, const SkPoint &absPos,
         return false;
     }
     const float matrixScale = canvas->getTotalMatrix().getMinScale();
-    if(matrixScale < 0.f) {
-        qCWarning(lcMovablePoint) << "projectToScreen: total matrix scale is invalid (overflowed or perspective), skipping draw"
-                                  << "absPos=" << absPos.x() << absPos.y();
+    *pixelScale = invScale*matrixScale;
+    if(!std::isfinite(*pixelScale) || *pixelScale < 0.f) {
+        qCWarning(lcMovablePoint) << "projectToScreen: computed pixelScale is invalid, skipping draw"
+                                  << "invScale=" << invScale << "matrixScale=" << matrixScale;
         return false;
     }
-    *pixelScale = invScale*matrixScale;
     qCDebug(lcMovablePoint) << "projectToScreen: invScale=" << invScale
                             << "absPos=" << absPos.x() << absPos.y()
                             << "screenPos=" << screenPos->x() << screenPos->y()
