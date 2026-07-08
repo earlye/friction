@@ -20,7 +20,7 @@ positions/sizes also visibly shifted.
 | --- | --- |
 | ![Normal circular pivot marker](issue-019f3d32-cdd9-7052-b37a-f48a666431f6-movablepoint-circle-precision-loss-normal.jpg) | ![Distorted oval pivot marker](issue-019f3d32-cdd9-7052-b37a-f48a666431f6-movablepoint-circle-precision-loss-distorted.jpg) |
 
-## Root cause (traced, not yet fixed)
+## Root cause (fixed)
 
 `PathPivot::drawSk` (`src/core/MovablePoints/pathpivot.cpp:39-63`)
 calls `MovablePoint::drawOnAbsPosSk`
@@ -83,12 +83,31 @@ world-space geometry narrowed to float32.
 - `src/core/canvasgizmos.cpp` — the resolved gizmo fix (`issue-019f2ded`), useful as a reference implementation for the screen-space pattern
 - `issues/issue-019f3d32-cdd9-7052-b37a-f48a666431f6-movablepoint-circle-precision-loss-normal.jpg` / `-distorted.jpg` — screenshots demonstrating the bug (copied from the main repo root, where the user originally saved them)
 
-## Next steps
+## Resolution
 
-- Reproduce and confirm on the other `drawOnAbsPosSk` call sites (path
-  nodes, control points) and `drawHovered`, not just the pivot.
-- Apply the same screen-space fix pattern as `issue-019f2ded` once
-  confirmed.
-- Note during triage whether this is pre-existing upstream code or
-  fork-introduced (`git blame`), for `earlye-fork.md`'s Origin/Upstream
-  tracking convention, same as was done for `issue-019f2ded`.
+Fixed by projecting the point once through the canvas's current total
+matrix (`canvas->getTotalMatrix().mapPoints(...)`), then drawing
+entirely in device/screen space with a radius derived as `invScale *
+matrix-scale` — no dependency on the absolute position's magnitude at
+all, matching `issue-019f2ded`'s screen-space pattern. Since the fix
+lives in the shared `MovablePoint::drawOnAbsPosSk`/`drawHovered`
+functions, it covers every caller (pivot, path nodes, control points)
+without needing separate reproduction at each site. `git blame` traced
+this to pre-existing upstream code (predates the fork).
+
+A Skia-independent unit test (`tests/tst_movablepoint_precision.cpp`,
+mirroring `tst_gizmos.cpp`'s pattern) characterizes the float32
+bounds-construction bug and confirms the fix's approach doesn't
+reproduce it — though it does not link/exercise `movablepoint.cpp`
+itself, since the actual precision loss lives inside Skia's own
+`SkCanvas::drawCircle`, not in project code that can be tested in
+isolation the way the gizmo's shape math was.
+
+**Known remaining scope**: `GradientPoint::drawSk`
+(`src/core/MovablePoints/gradientpoint.cpp:46-65`) reimplements the
+same world-space `drawCircle(absPos, radius*invScale)` pattern directly
+rather than calling `drawOnAbsPosSk`, so it did not benefit from this
+fix and will still distort at extreme zoom. Not fixed here since it
+wasn't part of this issue's confirmed scope (rotation pivot, path
+nodes, control points) — worth a follow-up if gradient handles are
+confirmed affected.
