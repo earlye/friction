@@ -75,6 +75,7 @@
 #include "widgets/assetswidget.h"
 #include "dialogs/adjustscenedialog.h"
 #include "dialogs/commandpalette.h"
+#include "wizards/installpresets.h"
 
 Q_DECLARE_LOGGING_CATEGORY(lcUiWindow)
 
@@ -319,22 +320,10 @@ void MainWindow::closedRenderQueueWindow()
                                             tr("Queue"));
 }
 
-void MainWindow::askInstallRenderPresets()
+void MainWindow::askInstallDefaultPresets()
 {
-    const auto result = QMessageBox::question(this,
-                                              tr("Install Render Profiles"),
-                                              tr("Are you sure you want to install the default render profiles?"));
-    if (result != QMessageBox::Yes) { return; }
-    AppSupport::installRenderPresets(true);
-}
-
-void MainWindow::askInstallExpressionsPresets()
-{
-    const auto result = QMessageBox::question(this,
-                                              tr("Install Expressions Presets"),
-                                              tr("Are you sure you want to install the default expressions presets?"));
-    if (result != QMessageBox::Yes) { return; }
-    AppSupport::installExprPresets(true);
+    Ui::InstallPresets dialog(this);
+    dialog.exec();
 }
 
 void MainWindow::askRestoreFillStrokeDefault()
