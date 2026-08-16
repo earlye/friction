@@ -43,7 +43,6 @@
 #include <QClipboard>
 #include <QMimeData>
 
-#include "GUI/edialogs.h"
 #include "dialogs/applyexpressiondialog.h"
 #include "dialogs/markereditordialog.h"
 #include "timelinedockwidget.h"
@@ -62,7 +61,6 @@
 #include "memoryhandler.h"
 #include "dialogs/scenesettingsdialog.h"
 #include "importhandler.h"
-#include "GUI/edialogs.h"
 #include "eimporters.h"
 #include "dialogs/exportsvgdialog.h"
 #include "widgets/alignwidget.h"
@@ -1081,8 +1079,10 @@ void MainWindow::openFile()
         const QString defPath = mDocument.fEvFile.isEmpty() ? getLastOpenDir() : mDocument.fEvFile;
         const QString title = tr("Open File", "OpenDialog_Title");
         const QString files = tr("Friction Files %1", "OpenDialog_FileType");
-        const QString openPath = eDialogs::openFile(title, defPath,
-                                                    files.arg("(*.friction *.ev)"));
+        const QString openPath = AppSupport::getOpenFile(this,
+                                                         title,
+                                                         defPath,
+                                                         files.arg("(*.friction)"));
         if (!openPath.isEmpty()) { openFile(openPath); }
         enable();
     }
@@ -1094,7 +1094,7 @@ void MainWindow::openFile(const QString& openPath)
     try {
         QFileInfo fi(openPath);
         const QString suffix = fi.suffix();
-        if (suffix == "friction" || suffix == "ev") {
+        if (suffix == "friction") {
             loadEVFile(openPath);
         } /*else if (suffix == "xev") {
             loadXevFile(openPath);
@@ -1135,7 +1135,7 @@ void MainWindow::saveFile(const QString& path,
     try {
         QFileInfo fi(path);
         const QString suffix = fi.suffix();
-        if (suffix == "friction" || suffix == "ev") {
+        if (suffix == "friction") {
             saveToFile(path);
         } /*else if (suffix == "xev") {
             saveToFileXEV(path);
@@ -1161,10 +1161,11 @@ void MainWindow::saveFileAs(const bool setPath)
 
     const QString title = tr("Save File", "SaveDialog_Title");
     const QString fileType = tr("Friction Files %1", "SaveDialog_FileType");
-    QString saveAs = eDialogs::saveFile(title,
-                                        defPath,
-                                        fileType.arg("(*.friction)"),
-                                        "friction");
+    QString saveAs = AppSupport::getSaveFile(this,
+                                             title,
+                                             defPath,
+                                             fileType.arg("(*.friction)"),
+                                             "friction");
     enableEventFilter();
     if (!saveAs.isEmpty()) { saveFile(saveAs, setPath); }
 }
@@ -1271,12 +1272,14 @@ void MainWindow::importFile()
 
     const QString title = tr("Import File(s)", "ImportDialog_Title");
     const QString fileType = tr("Files %1", "ImportDialog_FileTypes");
-    const QString fileTypes = "(*.friction *.ev *.svg " +
+    const QString fileTypes = "(*.friction *.svg " +
             FileExtensions::videoFilters() +
             FileExtensions::imageFilters() +
             FileExtensions::soundFilters() + ")";
-    const auto importPaths = eDialogs::openFiles(
-                title, defPath, fileType.arg(fileTypes));
+    const auto importPaths = AppSupport::getOpenFiles(this,
+                                                      title,
+                                                      defPath,
+                                                      fileType.arg(fileTypes));
     enableEventFilter();
     if (!importPaths.isEmpty()) {
         for(const QString &path : importPaths) {
@@ -1297,8 +1300,10 @@ void MainWindow::linkFile()
                 QDir::homePath() : mDocument.fEvFile;
     const QString title = tr("Link File", "LinkDialog_Title");
     const QString fileType = tr("Files %1", "LinkDialog_FileType");
-    const auto importPaths = eDialogs::openFiles(
-                title, defPath, fileType.arg("(*.svg *.ora)"));
+    const auto importPaths = AppSupport::getOpenFiles(this,
+                                                      title,
+                                                      defPath,
+                                                      fileType.arg("(*.svg)"));
     enableEventFilter();
     if (!importPaths.isEmpty()) {
         for (const QString &path : importPaths) {
@@ -1319,7 +1324,9 @@ void MainWindow::importImageSequence()
                 QDir::homePath() : mDocument.fEvFile;
     const QString title = tr("Import Image Sequence",
                              "ImportSequenceDialog_Title");
-    const auto folder = eDialogs::openDir(title, defPath);
+    const auto folder = AppSupport::getOpenDirectory(this,
+                                                     title,
+                                                     defPath);
     enableEventFilter();
     if (!folder.isEmpty()) { mActions.importFile(folder); }
 }
