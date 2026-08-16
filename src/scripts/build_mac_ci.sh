@@ -25,16 +25,35 @@ GHA_RUN_NUMBER=${GHA_RUN_NUMBER:-0}
 BUILD_ORIGIN=${BUILD_ORIGIN:-ci}
 BUILD_ARCH=${BUILD_ARCH:-"universal"}
 
-SDK=1.0.0
-SDK_REV=r5
-SDK_URL=https://github.com/friction2d/friction-sdk/releases/download/v${SDK}
-SDK_TAR=friction-sdk-${SDK}${SDK_REV}-macOS.tar.xz
-SDK_SHA256=36a30cb68862d3cd0fe39f9c283f1a9fb9cf2ea01a9dfc65c85024b0c2171d2d
+if [ "${BUILD_ARCH}" = "arm64" ] || [ "${BUILD_ARCH}" = "universal" ]; then
+    BUILD_ARM=1
+fi
+if [ "${BUILD_ARCH}" = "x86_64" ] || [ "${BUILD_ARCH}" = "universal" ]; then
+    BUILD_INTEL=1
+fi
 
-if [ ! -d "${CWD}/sdk" ]; then
-    curl -OL ${SDK_URL}/${SDK_TAR}
-    echo "${SDK_SHA256}  ${SDK_TAR}" | shasum -a 256 --check
-    tar xf ${SDK_TAR}
+SDK_PATH=${CWD}/sdk
+SDK_VERSION=1.0.0
+SDK_REV=r6
+SDK_URL=https://github.com/friction2d/friction-sdk/releases/download/v${SDK_VERSION}
+SDK_BASE=friction-sdk-${SDK_VERSION}${SDK_REV}-macOS
+SDK_ARM_TAR=${SDK_BASE}-arm64.tar.xz
+SDK_INTEL_TAR=${SDK_BASE}-x86_64.tar.xz
+SDK_ARM_SHA256=46a6e44b5d55f681f9dbddaa321635bfbc18cd080a649e48029d6b28cb41ad85
+SDK_INTEL_SHA256=c25c2a220a6f801edde67b2ce6aca3564ff7a0f7e0c00e35bac7878f1632d560
+
+if [ ! -d "${SDK_PATH}" ]; then
+    mkdir -p "${SDK_PATH}"
+    if [ "${BUILD_ARM}" = 1 ]; then
+        curl -OL ${SDK_URL}/${SDK_ARM_TAR}
+        echo "${SDK_ARM_SHA256}  ${SDK_ARM_TAR}" | shasum -a 256 --check
+        (cd "${SDK_PATH}" ; tar xf ${CWD}/${SDK_ARM_TAR} )
+    fi
+    if [ "${BUILD_INTEL}" = 1 ]; then
+        curl -OL ${SDK_URL}/${SDK_INTEL_TAR}
+        echo "${SDK_INTEL_SHA256}  ${SDK_INTEL_TAR}" | shasum -a 256 --check
+        (cd "${SDK_PATH}" ; tar xf ${CWD}/${SDK_INTEL_TAR} )
+    fi
 fi
 
 git submodule update --init --recursive
