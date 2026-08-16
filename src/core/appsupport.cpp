@@ -927,7 +927,9 @@ void AppSupport::installExprPresets(const bool force,
                 << "time.fexpr"
                 << "trackObject.fexpr"
                 << "wave.fexpr"
-                << "wiggle.fexpr";
+                << "wiggle.fexpr"
+                << "frameRemapLoop.fexpr"
+                << "frameRemapLoopBounce.fexpr";
     }
 
     for (const auto &preset : presets) {
