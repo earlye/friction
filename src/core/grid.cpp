@@ -386,6 +386,15 @@ const Grid::Settings Grid::loadSettings()
         const QVariant var = AppSupport::getSettings("grid", "colorMajor");
         if (var.isValid()) { settings.colorMajor = var.value<QColor>(); }
     }
+    {
+        const QVariant var = AppSupport::getSettings("grid", "stepRotCtrl");
+        if (var.isValid()) { settings.stepRotCtrl = var.toDouble(); }
+    }
+    {
+        const QVariant var = AppSupport::getSettings("grid", "stepRotShift");
+        if (var.isValid()) { settings.stepRotShift = var.toDouble(); }
+    }
+
     qCDebug(lcGrid) << "Load Grid Settings";
     debugSettings(settings);
     return settings;
@@ -415,6 +424,8 @@ void Grid::saveSettings(const Settings &settings)
     AppSupport::setSettings("grid", "majorEveryY", settings.majorEveryY);
     AppSupport::setSettings("grid", "color", settings.color);
     AppSupport::setSettings("grid", "colorMajor", settings.colorMajor);
+    AppSupport::setSettings("grid", "stepRotCtrl", settings.stepRotCtrl);
+    AppSupport::setSettings("grid", "stepRotShift", settings.stepRotShift);
 }
 
 void Grid::debugSettings(const Settings &settings)
@@ -439,7 +450,9 @@ void Grid::debugSettings(const Settings &settings)
              << "majorEveryX" << settings.majorEveryX
              << "majorEveryY" << settings.majorEveryY
              << "color" << settings.color
-             << "colorMajor" << settings.colorMajor;
+             << "colorMajor" << settings.colorMajor
+             << "stepRotCtrl" << settings.stepRotCtrl
+             << "stepRotShift" << settings.stepRotShift;
 }
 
 bool Grid::differSettings(const Settings &orig,
@@ -464,7 +477,9 @@ bool Grid::differSettings(const Settings &orig,
         orig.majorEveryX != diff.majorEveryX ||
         orig.majorEveryY != diff.majorEveryY ||
         orig.color != diff.color ||
-        orig.colorMajor != diff.colorMajor) { return true; }
+        orig.colorMajor != diff.colorMajor ||
+        orig.stepRotCtrl != diff.stepRotCtrl ||
+        orig.stepRotShift != diff.stepRotShift) { return true; }
     return false;
 }
 
@@ -635,6 +650,22 @@ void Grid::setOption(const Option &option,
             key = "colorMajor";
         }
         break;
+    case Option::StepRotCtl:
+        if (mSettings.stepRotCtrl == value.toDouble()) { return; }
+        mSettings.stepRotCtrl = value.toDouble();
+        if (global) {
+            eSettings::sInstance->fGrid.stepRotCtrl = value.toDouble();
+            key = "stepRotCtrl";
+        }
+        break;
+    case Option::StepRotShift:
+        if (mSettings.stepRotShift == value.toDouble()) { return; }
+        mSettings.stepRotShift = value.toDouble();
+        if (global) {
+            eSettings::sInstance->fGrid.stepRotShift = value.toDouble();
+            key = "stepRotShift";
+        }
+        break;
     default: return;
     }
 
@@ -688,6 +719,10 @@ QVariant Grid::getOption(const Option &option)
         return mSettings.color;
     case Option::ColorMajor:
         return mSettings.colorMajor;
+    case Option::StepRotCtl:
+        return mSettings.stepRotCtrl;
+    case Option::StepRotShift:
+        return mSettings.stepRotShift;
     default: return QVariant();
     }
 }
