@@ -86,6 +86,35 @@ rm -rf src/app/Friction.app/Contents/PlugIns/{bearer,iconengines,imageformats,me
 #    cp -a ${CWD}/docs/offline src/app/Friction.app/Contents/Resources/docs
 #fi
 
+# Sign with a persistent self-signed identity so `just enable-gha-dmg`
+# can register a one-time Gatekeeper allow-rule for it. This is not an
+# Apple Developer ID and isn't notarized, so it only helps machines
+# that have explicitly trusted this identity, not the general public.
+if [ -n "${MACOS_CODESIGN_P12_BASE64:-}" ]; then
+    MACOS_CODESIGN_IDENTITY="${MACOS_CODESIGN_IDENTITY:-Friction CI Code Signing}"
+    KEYCHAIN="${CWD}/ci-codesign.keychain-db"
+    KEYCHAIN_PASS=`openssl rand -base64 24`
+    ORIGINAL_KEYCHAINS=`security list-keychains -d user | sed 's/^ *"//; s/" *$//'`
+
+    security create-keychain -p "${KEYCHAIN_PASS}" "${KEYCHAIN}"
+    security set-keychain-settings "${KEYCHAIN}"
+    security unlock-keychain -p "${KEYCHAIN_PASS}" "${KEYCHAIN}"
+    security list-keychains -d user -s "${KEYCHAIN}" ${ORIGINAL_KEYCHAINS}
+
+    echo "${MACOS_CODESIGN_P12_BASE64}" | base64 --decode > "${CWD}/ci-codesign.p12"
+    security import "${CWD}/ci-codesign.p12" -k "${KEYCHAIN}" -P "${MACOS_CODESIGN_P12_PASSWORD}" -T /usr/bin/codesign
+    security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASS}" "${KEYCHAIN}"
+    rm -f "${CWD}/ci-codesign.p12"
+
+    codesign --force --deep --timestamp=none --sign "${MACOS_CODESIGN_IDENTITY}" src/app/Friction.app
+    codesign --verify --deep --strict --verbose=2 src/app/Friction.app
+
+    security list-keychains -d user -s ${ORIGINAL_KEYCHAINS}
+    security delete-keychain "${KEYCHAIN}"
+else
+    echo "MACOS_CODESIGN_P12_BASE64 not set — skipping code signing (app will be unsigned)."
+fi
+
 mkdir dmg
 mv src/app/Friction.app dmg/
 (cd dmg ; ln -sf /Applications Applications)

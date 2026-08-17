@@ -53,3 +53,6 @@ log.txt
 .claude/*.local.json
 
 .codegraph
+
+ci-codesign.p12
+ci-codesign.keychain-db

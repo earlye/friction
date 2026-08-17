@@ -245,6 +245,26 @@ every merge to `main`.
 - [#33](https://github.com/earlye/friction/pull/33): parallel macOS CI
   — arm64 and x86_64 as separate jobs
 
+### Self-Signed macOS CI Code Signing
+
+The macOS build signs `Friction.app` with a persistent self-signed
+"Friction CI Code Signing" identity (private key stored as a GitHub
+Actions secret, never committed) rather than shipping unsigned. This
+is not an Apple Developer ID and the builds are not notarized, so it
+does not clear Gatekeeper for the general public — it exists so that
+`just enable-gha-dmg` can register a one-time local Gatekeeper
+allow-rule (`spctl --add`) on a Mac you administer, after which future
+CI-signed downloads launch without an "unidentified developer"
+warning on that machine.
+
+**Upstream:** won't PR — fork-specific feature tied to this fork's own
+release infrastructure and personally-administered machines
+
+#### History
+
+- [#95](https://github.com/earlye/friction/pull/95): self-signed CI
+  code signing + `just enable-gha-dmg` local Gatekeeper trust
+
 ### Audio Waveform in Animation Timeline
 
 The timeline now renders the decoded audio waveform behind clip
