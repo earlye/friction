@@ -260,6 +260,11 @@ warning on that machine.
 **Upstream:** won't PR — fork-specific feature tied to this fork's own
 release infrastructure and personally-administered machines
 
+#### History
+
+- [#95](https://github.com/earlye/friction/pull/95): self-signed CI
+  code signing + `just enable-gha-dmg` local Gatekeeper trust
+
 ### Audio Waveform in Animation Timeline
 
 The timeline now renders the decoded audio waveform behind clip
