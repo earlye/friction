@@ -89,7 +89,7 @@ public:
                                                           true).toBool();
     bool fGizmoScaleVisibility = AppSupport::getSettings("gizmos",
                                                          "Scale",
-                                                         false).toBool();
+                                                         true).toBool();
     bool fGizmoShearVisibility = AppSupport::getSettings("gizmos",
                                                          "Shear",
                                                          false).toBool();
@@ -258,6 +258,9 @@ signals:
     void openApplyExpressionDialog(QrealAnimator* const target);
     void newVideo(const VideoBox::VideoSpecs specs);
     void currentPixelColor(const QColor &color);
+
+    // https://github.com/friction2d/friction/pull/736
+    void fitCanvasToSize();
 };
 
 #endif // DOCUMENT_H

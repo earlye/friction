@@ -41,6 +41,7 @@
 #include "Animators/qrealanimator.h"
 #include "Animators/complexanimator.h"
 #include "matrixdecomposition.h"
+#include "appsupport.h"
 
 #include <QInputDialog>
 #include <QLoggingCategory>
@@ -66,12 +67,13 @@ SvgLinkBox::SvgLinkBox() :
     mType = eBoxType::svgLink;
 }
 
-#include "GUI/edialogs.h"
-void SvgLinkBox::changeSourceFile() {
-    const QString path = eDialogs::openFile(
-                "Change Source", getFilePath(),
-                "SVG Files (*.svg)");
-    if(!path.isEmpty()) setFilePath(path);
+void SvgLinkBox::changeSourceFile()
+{
+    const QString path = AppSupport::getOpenFile(nullptr,
+                                                 tr("Change Source"),
+                                                 getFilePath(),
+                                                 tr("SVG Files (*.svg)"));
+    if (!path.isEmpty()) { setFilePath(path); }
 }
 
 void SvgLinkBox::updateContent() {

@@ -147,7 +147,6 @@ set(
     GUI/boxeslistactionbutton.cpp
     GUI/coloranimatorbutton.cpp
     GUI/dialogsinterface.cpp
-    GUI/edialogs.cpp
     GUI/ewidgets.cpp
     GUI/global.cpp
     GUI/propertynamedialog.cpp
@@ -464,7 +463,6 @@ set(
     GUI/boxeslistactionbutton.h
     GUI/coloranimatorbutton.h
     GUI/dialogsinterface.h
-    GUI/edialogs.h
     GUI/ewidgets.h
     GUI/global.h
     GUI/propertynamedialog.h

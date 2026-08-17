@@ -29,7 +29,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: sdk
-        key: friction-sdk-1.0.0r5-macOS
+        key: friction-sdk-1.0.0r6-macOS-arm64
     - name: Build
       env:
         GHA_RUN_NUMBER: ${{ github.run_number }}
@@ -56,7 +56,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: sdk
-        key: friction-sdk-1.0.0r5-macOS
+        key: friction-sdk-1.0.0r6-macOS-x86_64
     - name: Build
       env:
         GHA_RUN_NUMBER: ${{ github.run_number }}
