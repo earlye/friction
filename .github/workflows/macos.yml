@@ -35,6 +35,8 @@ jobs:
         GHA_RUN_NUMBER: ${{ github.run_number }}
         BUILD_ORIGIN: ci
         BUILD_ARCH: arm64
+        MACOS_CODESIGN_P12_BASE64: ${{ secrets.MACOS_CODESIGN_P12_BASE64 }}
+        MACOS_CODESIGN_P12_PASSWORD: ${{ secrets.MACOS_CODESIGN_P12_PASSWORD }}
       run: ./src/scripts/build_mac_ci.sh
     - name: Artifact
       uses: actions/upload-artifact@v4
@@ -60,6 +62,8 @@ jobs:
         GHA_RUN_NUMBER: ${{ github.run_number }}
         BUILD_ORIGIN: ci
         BUILD_ARCH: x86_64
+        MACOS_CODESIGN_P12_BASE64: ${{ secrets.MACOS_CODESIGN_P12_BASE64 }}
+        MACOS_CODESIGN_P12_PASSWORD: ${{ secrets.MACOS_CODESIGN_P12_PASSWORD }}
       run: ./src/scripts/build_mac_ci.sh
     - name: Artifact
       uses: actions/upload-artifact@v4

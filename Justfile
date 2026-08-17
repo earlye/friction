@@ -67,6 +67,42 @@ build-mac-arm: unpack-sdk
 
 build: build-mac-arm
 
+# One-time per-Mac setup: register CI's self-signed Friction identity with
+# Gatekeeper so signed release DMGs launch without an "unidentified
+# developer" warning. This is NOT an Apple Developer ID and is not
+# notarized — it only helps machines that run this recipe themselves, not
+# other users downloading the DMG. Requires `gh` to be authenticated and
+# sudo access on this Mac.
+enable-gha-dmg:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ARCH=$(uname -m)
+    if [ "${ARCH}" = "arm64" ]; then
+        PATTERN='Friction-*+arm.*.dmg'
+    else
+        PATTERN='Friction-*+x86_64.*.dmg'
+    fi
+    TMP=$(mktemp -d)
+    trap 'hdiutil detach "${TMP}/mnt" -quiet 2>/dev/null || true; rm -rf "${TMP}"' EXIT
+    echo "Fetching latest release DMG for ${ARCH}..."
+    gh release download --repo earlye/friction --pattern "${PATTERN}" --dir "${TMP}" --clobber
+    DMG=$(find "${TMP}" -maxdepth 1 -name '*.dmg' | head -1)
+    if [ -z "${DMG}" ]; then
+        echo "Error: no DMG matching ${PATTERN} found in the latest release."
+        exit 1
+    fi
+    mkdir -p "${TMP}/mnt"
+    hdiutil attach "${DMG}" -mountpoint "${TMP}/mnt" -nobrowse -quiet
+    APP="${TMP}/mnt/Friction.app"
+    if [ ! -d "${APP}" ]; then
+        echo "Error: ${APP} not found in mounted DMG."
+        exit 1
+    fi
+    echo "Registering a local Gatekeeper allow-rule for this signing identity (requires sudo)..."
+    sudo spctl --add --label "Friction CI" "${APP}"
+    spctl --assess --type execute -v "${APP}"
+    echo "Done. Future Friction.app builds signed by the same CI identity should launch without a Gatekeeper warning on this Mac."
+
 # Run the arm64 build
 run:
     build-release-arm64/dmg/Friction.app/Contents/MacOS/friction
